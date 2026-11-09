@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>io.github.bernalli.monopods</string>
+<key>CFBundleName</key><string>MonoPods</string>
+<key>CFBundleExecutable</key><string>MonoPods</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleVersion</key><string>10</string>
+<key>CFBundleShortVersionString</key><string>1.0.0</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
+<key>LSMinimumSystemVersion</key><string>14.2</string>
+<key>LSUIElement</key><true/>
+<key>SUAutomaticallyUpdate</key><false/>
+<key>SUEnableSystemProfiling</key><false/>
+<key>SUVerifyUpdateBeforeExtraction</key><true/>
+<key>SUShowReleaseNotes</key><false/>
+<key>NSBluetoothAlwaysUsageDescription</key><string>MonoPods observes the connected Bluetooth audio output and ear detection state.</string>
+<key>NSBluetoothPeripheralUsageDescription</key><string>MonoPods observes connected Bluetooth audio devices without scanning.</string>
+</dict></plist>

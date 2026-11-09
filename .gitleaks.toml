@@ -1,0 +1,11 @@
+title = "MonoPods gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# The Sparkle EdDSA public key is published on purpose: every installation uses it to verify updates.
+# Only this exact key is allowed; any other value is still reported.
+[[allowlists]]
+description = "Sparkle EdDSA public key in the update channel"
+regexTarget = "secret"
+regexes = ['''^qnf2h19QJ14naCBDjTQ9MhJEhJDsyZ6zmBktMLDUPXM=$''']

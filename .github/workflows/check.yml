@@ -1,0 +1,13 @@
+name: check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install swift-format swiftlint
+      - run: scripts/check.sh
+      - run: scripts/bundle.sh
+      - run: scripts/dmg.sh
