@@ -144,14 +144,20 @@ func envelopeFixture() throws -> [Data] {
 
 @MainActor @Test func timedOutHistoryCannotReportSuccessfulCapture() async {
   let process = LogProcess()
-  // The child must outlive any main actor delay before the timeout task runs: a busy CI runner
-  // delayed it past a 2-second child, which then exited 0 on its own.
+  // The timeout runs on the main actor, which a busy runner can hold for any time; a child that
+  // ends by itself, such as /bin/sleep, then exits 0 before the timeout runs. This child lives
+  // until it is killed, and the main actor is held past the deadline on purpose.
+  let startFailed = Int32.min
   let code: Int32 = await withCheckedContinuation { continuation in
     do {
       try process.start(
-        executable: "/bin/sleep", arguments: ["30"], timeoutSeconds: 0,
+        executable: "/usr/bin/tail", arguments: ["-f", "/dev/null"], timeoutSeconds: 0,
         chunk: { _ in }, finished: { continuation.resume(returning: $0) })
-    } catch { continuation.resume(returning: -1) }
+    } catch {
+      continuation.resume(returning: startFailed)
+      return
+    }
+    Thread.sleep(forTimeInterval: 2)
   }
   #expect(code == -1)
 }
