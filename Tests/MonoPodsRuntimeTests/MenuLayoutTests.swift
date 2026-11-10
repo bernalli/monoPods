@@ -97,6 +97,15 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   #expect(after.contains("Audio Output: Speakers"))
 }
 
+@Test func detailsNameTheAccessibilitySettingForSystemMonoAudio() throws {
+  var snapshot = layoutSnapshot()
+  snapshot.audio = AudioReading(generation: 1, mode: .stereo, status: 0, systemMono: .off)
+  let details = try #require(
+    submenu(MenuLayout.rows(for: layoutState(snapshot: snapshot)), titled: "Details"))
+  #expect(details.first?.title == "Accessibility Mono Audio: Off")
+  #expect(!details.contains { $0.title.hasPrefix("System Mono Audio") })
+}
+
 @Test func longWarningsWrapIntoInformationRowsWithOneSymbol() {
   let rows = MenuLayout.rows(for: layoutState(login: LoginText.unsupervised))
   let warning = rows.filter { $0.id.hasPrefix("warning.") }

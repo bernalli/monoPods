@@ -164,7 +164,8 @@ private func presentation(
         == (preference == .on))
     let state =
       preference == .on ? "On" : preference == .off ? "Off" : "Unavailable (treated as off)"
-    #expect(menu.details.contains("System Mono Audio: \(state)"))
+    #expect(menu.details.contains("Accessibility Mono Audio: \(state)"))
+    #expect(!menu.details.contains { $0.hasPrefix("System Mono Audio") })
     #expect(menu.details.contains("Current Audio: Stereo (OSStatus 0)"))
   }
 }

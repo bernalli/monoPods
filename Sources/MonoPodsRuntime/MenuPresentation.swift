@@ -123,7 +123,7 @@ public struct MenuPresentation: Equatable, Sendable {
         "Current Audio: \($0.mode == .mono ? "Mono" : $0.mode == .stereo ? "Stereo" : "Unknown") (OSStatus \($0.status))"
       } ?? "Current Audio: Unknown"
     details = [
-      "System Mono Audio: \(systemMono)",
+      "Accessibility Mono Audio: \(systemMono)",
       currentAudio,
       "Audio Output: \(routeName.isEmpty ? "None" : routeName)",
       "Model: \(outputPresent ? model?.name ?? "Not Recognized" : "None")",
