@@ -44,6 +44,7 @@ Each check downloads `https://github.com/bernalli/monoPods/releases/latest/downl
 - Turning on Mono Audio in System Settings pauses automatic switching.
 - After a crash, mono may stay on until you reopen MonoPods.
 - Tested only with AirPods Pro 2 on macOS 27.2.
+- To report a problem, choose Report an Issue… in the MonoPods menu. It opens a new GitHub issue in your browser; MonoPods sends nothing by itself.
 - Apart from update checks, MonoPods makes no network requests. It reads the local system log.
 
 See [technical notes and building from source](docs/TECHNICAL.md).
