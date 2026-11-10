@@ -3,12 +3,15 @@ import AppKit
 /// Turns menu rows into native menu items and keeps them current.
 ///
 /// Every update reuses the item that already shows a row with the same `id` and kind and only
-/// changes its title, state or symbol. AppKit redraws such changes while the menu is open, and an
-/// open submenu stays open because its item and its `NSMenu` are the same objects.
+/// changes its title, state, symbol or the text of its view. AppKit redraws such changes while the
+/// menu is open, and an open submenu stays open because its item and its `NSMenu` are the same
+/// objects.
 @MainActor public final class MenuRenderer: NSObject {
   private let perform: (MenuCommand) -> Void
+  private let metrics: MenuMetrics
 
-  public init(perform: @escaping (MenuCommand) -> Void) {
+  public init(metrics: MenuMetrics = .system, perform: @escaping (MenuCommand) -> Void) {
+    self.metrics = metrics
     self.perform = perform
   }
 
@@ -19,10 +22,11 @@ import AppKit
     for item in menu.items {
       if let key = item.identifier?.rawValue { existing[key] = item }
     }
+    let layouts = infoLayouts(for: rows)
     for (index, row) in rows.enumerated() {
       let key = Self.key(of: row)
       let item = existing.removeValue(forKey: key) ?? make(row, key: key)
-      configure(item, with: row)
+      configure(item, with: row, layout: layouts[index])
       if index < menu.numberOfItems, menu.item(at: index) === item { continue }
       if item.menu === menu { menu.removeItem(item) }
       menu.insertItem(item, at: index)
@@ -31,6 +35,31 @@ import AppKit
     while menu.numberOfItems > rows.count {
       menu.removeItem(at: rows.count)
     }
+  }
+
+  /// Where standard titles start in this menu, as AppKit draws them on macOS 27. The state column
+  /// belongs to the whole menu and appears when an item is checked. The image column belongs to
+  /// the group of items between two separators. Section headers keep their own position.
+  func infoLayouts(for rows: [MenuRow]) -> [InfoRowLayout] {
+    let showsState = rows.contains { row in
+      if case .toggle(_, let isOn) = row.kind { return isOn }
+      return false
+    }
+    let base = metrics.titleInset + (showsState ? metrics.stateColumn : 0)
+    var layouts = Array(
+      repeating: InfoRowLayout(symbolInset: base, textInset: base), count: rows.count)
+    var start = 0
+    for end in rows.indices + [rows.count] where end == rows.count || rows[end].kind == .separator {
+      let group = start..<end
+      let hasImage = group.contains { rows[$0].kind != .header && rows[$0].symbol != nil }
+      if hasImage {
+        for index in group {
+          layouts[index] = InfoRowLayout(symbolInset: base, textInset: base + metrics.imageColumn)
+        }
+      }
+      start = end + 1
+    }
+    return layouts
   }
 
   /// Kind and id together: a row that changes kind needs a new item, a header in particular.
@@ -62,14 +91,14 @@ import AppKit
     return item
   }
 
-  private func configure(_ item: NSMenuItem, with row: MenuRow) {
+  private func configure(_ item: NSMenuItem, with row: MenuRow, layout: InfoRowLayout) {
     switch row.kind {
     case .header:
       setTitle(item, row.title)
     case .separator:
       break
     case .info:
-      configureInfo(item, with: row)
+      configureInfo(item, with: row, layout: layout)
     case .toggle(let command, let isOn):
       configureCommand(item, row: row, command: command, enabled: true)
       let state: NSControl.StateValue = isOn ? .on : .off
@@ -82,32 +111,35 @@ import AppKit
       }
     case .submenu(let children):
       setTitle(item, row.title)
-      setSymbol(item, row.symbol, informational: false)
+      setSymbol(item, row.symbol)
       if item.submenu == nil { item.submenu = NSMenu(title: row.title) }
       if let submenu = item.submenu { apply(children, to: submenu) }
     }
   }
 
-  /// A disabled item does not highlight under the pointer and cannot be chosen. Its attributed
-  /// title keeps the secondary label color instead of the much lighter disabled text color.
-  private func configureInfo(_ item: NSMenuItem, with row: MenuRow) {
+  /// AppKit dims the title and image of a disabled item, whatever their color. The row is
+  /// therefore drawn by its own view, which AppKit does not dim, and the item stays disabled: it
+  /// cannot be chosen and is not highlighted. The view is kept and only its text changes.
+  private func configureInfo(_ item: NSMenuItem, with row: MenuRow, layout: InfoRowLayout) {
     if item.isEnabled { item.isEnabled = false }
-    if item.title != row.title || item.attributedTitle?.string != row.title {
-      item.title = row.title
-      item.attributedTitle = NSAttributedString(
-        string: row.title,
-        attributes: [
-          .foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.menuFont(ofSize: 0),
-        ])
+    // The item's own title still serves type-select; the view draws the visible text.
+    setTitle(item, row.title)
+    let view: InfoRowView
+    if let existing = item.view as? InfoRowView {
+      view = existing
+    } else {
+      view = InfoRowView(height: metrics.rowHeight)
+      item.view = view
     }
-    setSymbol(item, row.symbol, informational: true)
+    view.update(
+      text: row.title, symbol: row.symbol, layout: layout, trailingInset: metrics.trailingInset)
   }
 
   private func configureCommand(
     _ item: NSMenuItem, row: MenuRow, command: MenuCommand, enabled: Bool
   ) {
     setTitle(item, row.title)
-    setSymbol(item, row.symbol, informational: false)
+    setSymbol(item, row.symbol)
     item.target = self
     item.action = #selector(select(_:))
     item.representedObject = command.rawValue
@@ -119,15 +151,10 @@ import AppKit
   }
 
   /// The image is replaced only when the symbol changes. Symbols are decorative: the title says it.
-  private func setSymbol(_ item: NSMenuItem, _ symbol: String?, informational: Bool) {
+  private func setSymbol(_ item: NSMenuItem, _ symbol: String?) {
     guard let item = item as? RowItem, item.symbol != symbol else { return }
     item.symbol = symbol
-    var image = symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
-    if informational {
-      image = image?.withSymbolConfiguration(
-        NSImage.SymbolConfiguration(hierarchicalColor: .secondaryLabelColor))
-    }
-    item.image = image
+    item.image = symbol.flatMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
   }
 
   @objc private func select(_ sender: NSMenuItem) {

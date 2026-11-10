@@ -9,9 +9,12 @@ private func row(_ id: String, _ title: String, _ kind: MenuRow.Kind, symbol: St
   MenuRow(id: id, title: title, symbol: symbol, kind: kind)
 }
 
-private func foreground(of item: NSMenuItem) -> NSColor? {
-  guard let title = item.attributedTitle, title.length > 0 else { return nil }
-  return title.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+/// Metrics with distinct values, so each inset in a layout shows where it comes from.
+private let testMetrics = MenuMetrics(
+  rowHeight: 24, titleInset: 17, stateColumn: 13, imageColumn: 22.5, trailingInset: 20)
+
+@MainActor private func infoView(of item: NSMenuItem) -> InfoRowView? {
+  item.view as? InfoRowView
 }
 
 @MainActor @Test func headerRowBecomesTheNativeSectionHeader() throws {
@@ -22,18 +25,84 @@ private func foreground(of item: NSMenuItem) -> NSColor? {
   #expect(item.title == "MonoPods")
 }
 
-@MainActor @Test func informationRowsAreUnselectableTextInTheSecondaryLabelColor() throws {
+@MainActor @Test func informationRowsAreUnselectableViewsWithSecondaryLabelText() throws {
   let menu = NSMenu()
-  MenuRenderer { _ in }.apply(
+  MenuRenderer(metrics: testMetrics) { _ in }.apply(
     [row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro")], to: menu)
   #expect(!menu.autoenablesItems)
   let item = try #require(menu.items.first)
   #expect(!item.isEnabled)
   #expect(item.action == nil)
   #expect(item.title == "One AirPod in Use")
-  #expect(item.attributedTitle?.string == "One AirPod in Use")
-  #expect(foreground(of: item) == NSColor.secondaryLabelColor)
-  #expect(item.image != nil)
+  #expect(item.image == nil)
+  let view = try #require(infoView(of: item))
+  #expect(view.frame.height == testMetrics.rowHeight)
+  #expect(view.autoresizingMask.contains(.width))
+  #expect(view.label.stringValue == "One AirPod in Use")
+  #expect(view.label.textColor == NSColor.secondaryLabelColor)
+  #expect(view.label.font == NSFont.menuFont(ofSize: 0))
+  #expect(!view.label.isEditable && !view.label.isSelectable)
+  #expect(view.label.accessibilityRole() == .staticText)
+  #expect(view.symbolView.image != nil)
+  #expect(!view.symbolView.isHidden)
+  #expect(view.symbolView.contentTintColor == NSColor.secondaryLabelColor)
+  #expect(!view.symbolView.isAccessibilityElement())
+}
+
+@MainActor @Test func informationRowsWithoutSymbolShowOnlyText() throws {
+  let menu = NSMenu()
+  MenuRenderer(metrics: testMetrics) { _ in }.apply(
+    [row("version.0", "Version 1.0.1 (11)", .info)], to: menu)
+  let item = try #require(menu.items.first)
+  let view = try #require(infoView(of: item))
+  #expect(view.symbolView.isHidden)
+  #expect(view.label.stringValue == "Version 1.0.1 (11)")
+}
+
+@MainActor @Test func informationTextStartsInTheColumnOfStandardTitles() {
+  let renderer = MenuRenderer(metrics: testMetrics) { _ in }
+  let rows = [
+    row("monopods", "MonoPods", .header),
+    row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro"),
+    row("warning.0.1", "login.", .info),
+    row(
+      "automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: true), symbol: "waveform"),
+    row("separator", "", .separator),
+    row("version.0", "Version 1.0.1 (11)", .info),
+  ]
+  let layouts = renderer.infoLayouts(for: rows)
+  // A checked item adds the state column to the whole menu; a symbol adds the image column to
+  // its group only.
+  #expect(layouts[1] == InfoRowLayout(symbolInset: 30, textInset: 52.5))
+  #expect(layouts[2] == InfoRowLayout(symbolInset: 30, textInset: 52.5))
+  #expect(layouts[5] == InfoRowLayout(symbolInset: 30, textInset: 30))
+  var unchecked = rows
+  unchecked[3] = row("automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: false))
+  unchecked[1] = row("summary.0", "One AirPod in Use", .info)
+  #expect(renderer.infoLayouts(for: unchecked)[1] == InfoRowLayout(symbolInset: 17, textInset: 17))
+}
+
+@MainActor @Test func informationViewIsWideEnoughForItsTextWhileTheMenuIsClosed() throws {
+  let menu = NSMenu()
+  let renderer = MenuRenderer(metrics: testMetrics) { _ in }
+  renderer.apply([row("detail.0.0", "Status: Observing", .info)], to: menu)
+  let item = try #require(menu.items.first)
+  let view = try #require(infoView(of: item))
+  let narrow = view.frame.width
+  #expect(narrow >= 17 + view.label.intrinsicContentSize.width + 20 - 1)
+  renderer.apply(
+    [row("detail.0.0", "Status: Waiting for verified stream transport", .info)], to: menu)
+  #expect(view.frame.width > narrow)
+  #expect(view.frame.height == testMetrics.rowHeight)
+}
+
+@MainActor @Test func measuredMetricsArePlausible() {
+  let metrics = MenuMetrics.measure()
+  #expect((16...40).contains(metrics.rowHeight))
+  #expect((0...40).contains(metrics.stateColumn))
+  #expect((8...48).contains(metrics.imageColumn))
+  #expect((4...60).contains(metrics.trailingInset))
+  #expect(metrics.titleInset == MenuMetrics.fallback.titleInset)
 }
 
 @MainActor @Test func selectableRowsKeepTheStandardLookAndRunTheirCommand() throws {
@@ -56,9 +125,12 @@ private func foreground(of item: NSMenuItem) -> NSColor? {
   #expect(menu.items[2].isEnabled)
   #expect(menu.items[3].keyEquivalent == "q")
   #expect(menu.items[3].keyEquivalentModifierMask == .command)
-  menu.performActionForItem(at: 0)
-  menu.performActionForItem(at: 2)
-  menu.performActionForItem(at: 3)
+  // Items hold their target weakly; the renderer must outlive the actions it receives.
+  withExtendedLifetime(renderer) {
+    menu.performActionForItem(at: 0)
+    menu.performActionForItem(at: 2)
+    menu.performActionForItem(at: 3)
+  }
   #expect(performed == [.automation, .reportIssue, .quit])
 }
 
@@ -82,6 +154,7 @@ private func foreground(of item: NSMenuItem) -> NSColor? {
   let details = try #require(menu.items.first { $0.title == "Details" })
   let submenu = try #require(details.submenu)
   let output = submenu.items[0]
+  let outputView = try #require(infoView(of: output))
   let toggle = menu.items[1]
 
   renderer.apply(rows(count: 0, output: "Speakers", warning: true), to: menu)
@@ -94,7 +167,9 @@ private func foreground(of item: NSMenuItem) -> NSColor? {
   #expect(details.submenu === submenu)
   #expect(submenu.items[0] === output)
   #expect(output.title == "Audio Output: Speakers")
-  #expect(output.attributedTitle?.string == "Audio Output: Speakers")
+  #expect(output.view === outputView)
+  #expect(outputView.label.stringValue == "Audio Output: Speakers")
+  #expect(infoView(of: submenu.items[1])?.label.stringValue == "AirPods in Use: 0")
   #expect(submenu.items[1].title == "AirPods in Use: 0")
   #expect(menu.items[2] === toggle)
   #expect(toggle.state == .off)
