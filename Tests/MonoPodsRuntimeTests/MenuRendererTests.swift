@@ -251,3 +251,79 @@ private let testMetrics = MenuMetrics(
   #expect(menu.items.count == 2)
   #expect(menu.items[1].isSeparatorItem)
 }
+
+@MainActor private final class RemovalRecordingMenu: NSMenu {
+  var removedItems: [NSMenuItem] = []
+
+  override func removeItem(_ item: NSMenuItem) {
+    removedItems.append(item)
+    super.removeItem(item)
+  }
+
+  override func removeItem(at index: Int) {
+    if let item = item(at: index) { removedItems.append(item) }
+    super.removeItem(at: index)
+  }
+}
+
+@MainActor @Test func stableRowsAreNeverDetachedWhenOtherRowsComeAndGo() {
+  let renderer = MenuRenderer(metrics: .fallback) { _ in }
+  let candidates = [
+    row("warning.0", "Warning A", .info),
+    row("warning.1", "Warning B", .info),
+    row("details", "Details", .submenu([])),
+    row("options", "Options", .submenu([])),
+  ]
+  func rows(_ mask: Int) -> [MenuRow] {
+    [row("monopods", "MonoPods", .header)]
+      + candidates.indices.compactMap { index in
+        mask & (1 << index) == 0 ? nil : candidates[index]
+      }
+  }
+
+  for before in 0..<16 {
+    for after in 0..<16 {
+      let menu = RemovalRecordingMenu()
+      renderer.apply(rows(before), to: menu)
+      let next = rows(after)
+      let titles = Set(next.map(\.title))
+      let retained = menu.items.filter { titles.contains($0.title) }
+      menu.removedItems.removeAll()
+
+      renderer.apply(next, to: menu)
+
+      #expect(menu.items.map(\.title) == next.map(\.title))
+      #expect(
+        retained.allSatisfy { item in
+          menu.items.contains { $0 === item }
+        })
+      #expect(
+        menu.removedItems.allSatisfy { removed in
+          !retained.contains { $0 === removed }
+        })
+    }
+  }
+}
+
+@Test func metricFallbacksRejectOutOfRangeAndNonFiniteMeasurements() {
+  let cases: [(ClosedRange<CGFloat>, CGFloat)] = [
+    (16...40, MenuMetrics.fallback.rowHeight),
+    (0...40, MenuMetrics.fallback.stateColumn),
+    (4...60, MenuMetrics.fallback.trailingInset),
+  ]
+  for (range, fallback) in cases {
+    for value in [
+      range.lowerBound - 1, range.upperBound + 1,
+      CGFloat.nan, CGFloat.infinity, -CGFloat.infinity,
+    ] {
+      #expect(MenuMetrics.plausible(value, in: range, else: fallback) == fallback)
+    }
+    for value in [
+      range.lowerBound,
+      (range.lowerBound + range.upperBound) / 2,
+      range.upperBound,
+    ] {
+      #expect(MenuMetrics.plausible(value, in: range, else: fallback) == value)
+    }
+  }
+}

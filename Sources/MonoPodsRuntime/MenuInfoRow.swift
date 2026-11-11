@@ -43,6 +43,12 @@ public struct MenuMetrics: Equatable, Sendable {
   /// Measured once, from menus that are never shown.
   @MainActor public static let system = measure()
 
+  static func plausible(
+    _ value: CGFloat, in range: ClosedRange<CGFloat>, else other: CGFloat
+  ) -> CGFloat {
+    range.contains(value) ? value : other
+  }
+
   @MainActor static func measure() -> MenuMetrics {
     let title = "MonoPods"
     func size(items: Int = 1, state: NSControl.StateValue = .off) -> NSSize {
@@ -58,11 +64,6 @@ public struct MenuMetrics: Equatable, Sendable {
     let width = NSAttributedString(
       string: title, attributes: [.font: NSFont.menuFont(ofSize: 0)]
     ).size().width
-    func plausible(_ value: CGFloat, in range: ClosedRange<CGFloat>, else other: CGFloat)
-      -> CGFloat
-    {
-      range.contains(value) ? value : other
-    }
     return MenuMetrics(
       rowHeight: plausible(
         size(items: 2).height - plain.height, in: 16...40, else: fallback.rowHeight),

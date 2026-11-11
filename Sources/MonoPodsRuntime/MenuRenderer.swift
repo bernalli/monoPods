@@ -18,10 +18,17 @@ import AppKit
   public func apply(_ rows: [MenuRow], to menu: NSMenu) {
     // Information rows are disabled on purpose; validation must not enable them again.
     menu.autoenablesItems = false
+    let wanted = Set(rows.map { Self.key(of: $0) })
     var existing: [String: NSMenuItem] = [:]
+
     for item in menu.items {
-      if let key = item.identifier?.rawValue { existing[key] = item }
+      guard let key = item.identifier?.rawValue, wanted.contains(key) else {
+        menu.removeItem(item)
+        continue
+      }
+      existing[key] = item
     }
+
     let layouts = infoLayouts(for: rows)
     for (index, row) in rows.enumerated() {
       let key = Self.key(of: row)
