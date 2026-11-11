@@ -129,7 +129,10 @@ final class InfoRowView: NSView {
     rowLayout = layout
     self.trailingInset = trailingInset
     if window == nil {
-      let width = ceil(layout.textInset + label.intrinsicContentSize.width + trailingInset)
+      // The cell draws the text inside a padding on each side; on macOS 27 the label's intrinsic
+      // width leaves that padding out, and a label of that width truncates its text.
+      let textWidth = label.cell?.cellSize.width ?? label.intrinsicContentSize.width
+      let width = ceil(layout.textInset + textWidth + trailingInset)
       if frame.width != width { setFrameSize(NSSize(width: width, height: frame.height)) }
     }
     needsLayout = true

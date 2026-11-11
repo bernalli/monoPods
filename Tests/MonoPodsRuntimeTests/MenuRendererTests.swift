@@ -96,6 +96,27 @@ private let testMetrics = MenuMetrics(
   #expect(view.frame.height == testMetrics.rowHeight)
 }
 
+@MainActor @Test func informationTextIsNotTruncatedInAnOpenMenu() throws {
+  // Details lines that macOS 27 cut off with an ellipsis.
+  for text in ["Current Audio: Stereo (OSStatus 0)", "Automatic Ear Detection: Unknown"] {
+    let menu = NSMenu()
+    MenuRenderer(metrics: testMetrics) { _ in }.apply([row("detail.0.0", text, .info)], to: menu)
+    let item = try #require(menu.items.first)
+    let view = try #require(infoView(of: item))
+    // An open menu places the view of its widest row at its left edge, at the view's own width.
+    let window = NSWindow(
+      contentRect: NSRect(origin: .zero, size: view.frame.size), styleMask: [.borderless],
+      backing: .buffered, defer: true)
+    window.contentView?.addSubview(view)
+    view.setFrameOrigin(.zero)
+    view.layoutSubtreeIfNeeded()
+    let cell = try #require(view.label.cell)
+    #expect(view.label.frame.width >= cell.cellSize.width, "\(text)")
+    #expect(
+      cell.expansionFrame(withFrame: view.label.bounds, in: view.label) == .zero, "\(text)")
+  }
+}
+
 @MainActor @Test func measuredMetricsArePlausible() {
   let metrics = MenuMetrics.measure()
   #expect((16...40).contains(metrics.rowHeight))
