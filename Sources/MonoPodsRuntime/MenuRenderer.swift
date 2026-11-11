@@ -9,9 +9,15 @@ import AppKit
 @MainActor public final class MenuRenderer: NSObject {
   private let perform: (MenuCommand) -> Void
   private let metrics: MenuMetrics
+  private let infoStyle: InfoRowStyle
 
-  public init(metrics: MenuMetrics = .system, perform: @escaping (MenuCommand) -> Void) {
+  /// `infoStyle` defaults to the style for the running version of macOS; see `InfoRowStyle`.
+  public init(
+    metrics: MenuMetrics = .system, infoStyle: InfoRowStyle = .system,
+    perform: @escaping (MenuCommand) -> Void
+  ) {
     self.metrics = metrics
+    self.infoStyle = infoStyle
     self.perform = perform
   }
 
@@ -44,9 +50,10 @@ import AppKit
     }
   }
 
-  /// Where standard titles start in this menu, as AppKit draws them on macOS 27. The state column
-  /// belongs to the whole menu and appears when an item is checked. The image column belongs to
-  /// the group of items between two separators. Section headers keep their own position.
+  /// Where standard titles start in this menu, as AppKit draws them on macOS 27. Only the view of
+  /// `InfoRowStyle.secondaryView` uses these positions. The state column belongs to the whole menu
+  /// and appears when an item is checked. The image column belongs to the group of items between
+  /// two separators. Section headers keep their own position.
   func infoLayouts(for rows: [MenuRow]) -> [InfoRowLayout] {
     let showsState = rows.contains { row in
       if case .toggle(_, let isOn) = row.kind { return isOn }
@@ -124,13 +131,18 @@ import AppKit
     }
   }
 
-  /// AppKit dims the title and image of a disabled item, whatever their color. The row is
-  /// therefore drawn by its own view, which AppKit does not dim, and the item stays disabled: it
-  /// cannot be chosen and is not highlighted. The view is kept and only its text changes.
+  /// AppKit dims the title and image of a disabled item, whatever their color. With
+  /// `.secondaryView` the row is therefore drawn by its own view, which AppKit does not dim, and
+  /// the item stays disabled: it cannot be chosen and is not highlighted. The view is kept and only
+  /// its text changes. With `.disabledItem` the item shows its own title and image, dimmed.
   private func configureInfo(_ item: NSMenuItem, with row: MenuRow, layout: InfoRowLayout) {
     if item.isEnabled { item.isEnabled = false }
-    // The item's own title still serves type-select; the view draws the visible text.
+    // The item's own title still serves type-select; the view, if any, draws the visible text.
     setTitle(item, row.title)
+    guard infoStyle == .secondaryView else {
+      setSymbol(item, row.symbol)
+      return
+    }
     let view: InfoRowView
     if let existing = item.view as? InfoRowView {
       view = existing

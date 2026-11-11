@@ -4,10 +4,10 @@ import MonoPodsRuntime
 
 /// The menu bar item and its native menu.
 ///
-/// The menu is an AppKit `NSMenu` so that information rows can use the secondary label color and
-/// the open menu can change as the runtime changes. Every change of the host or of the updater
-/// schedules one refresh in the common run loop modes, which include menu tracking, so the values
-/// in an open menu and in an open Details submenu follow the state.
+/// The menu is an AppKit `NSMenu` so that information rows can use the secondary label color on
+/// macOS 27 (see `InfoRowStyle`) and the open menu can change as the runtime changes. Every change
+/// of the host or of the updater schedules one refresh in the common run loop modes, which include
+/// menu tracking, so the values in an open menu and in an open Details submenu follow the state.
 @MainActor final class StatusMenuController: NSObject, NSMenuDelegate {
   private let host: RuntimeHost
   private let updates: UpdateController

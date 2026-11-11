@@ -17,6 +17,10 @@ private let testMetrics = MenuMetrics(
   item.view as? InfoRowView
 }
 
+/// The constants of `MenuMetrics.fallback` are those of an open macOS 27 menu, and the renderer
+/// draws information rows with its own view only where they hold.
+private let runsOnMacOS27OrLater = InfoRowStyle.system == .secondaryView
+
 @MainActor @Test func headerRowBecomesTheNativeSectionHeader() throws {
   let menu = NSMenu()
   MenuRenderer { _ in }.apply([row("monopods", "MonoPods", .header)], to: menu)
@@ -27,7 +31,7 @@ private let testMetrics = MenuMetrics(
 
 @MainActor @Test func informationRowsAreUnselectableViewsWithSecondaryLabelText() throws {
   let menu = NSMenu()
-  MenuRenderer(metrics: testMetrics) { _ in }.apply(
+  MenuRenderer(metrics: testMetrics, infoStyle: .secondaryView) { _ in }.apply(
     [row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro")], to: menu)
   #expect(!menu.autoenablesItems)
   let item = try #require(menu.items.first)
@@ -51,7 +55,7 @@ private let testMetrics = MenuMetrics(
 
 @MainActor @Test func informationRowsWithoutSymbolShowOnlyText() throws {
   let menu = NSMenu()
-  MenuRenderer(metrics: testMetrics) { _ in }.apply(
+  MenuRenderer(metrics: testMetrics, infoStyle: .secondaryView) { _ in }.apply(
     [row("version.0", "Version 1.0.1 (11)", .info)], to: menu)
   let item = try #require(menu.items.first)
   let view = try #require(infoView(of: item))
@@ -82,7 +86,9 @@ private let testMetrics = MenuMetrics(
   #expect(renderer.infoLayouts(for: unchecked)[1] == InfoRowLayout(symbolInset: 17, textInset: 17))
 }
 
-@MainActor @Test func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
+@MainActor
+@Test(.enabled(if: runsOnMacOS27OrLater, "Earlier versions lay out menus differently"))
+func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
   // In an open macOS 27 menu the title field of a standard item starts 14 pt from the menu's
   // edge, 28 pt with a state column, and 20 pt further in a group with images. The label of an
   // information row draws its text with the same cell padding, so its field starts there too.
@@ -113,7 +119,7 @@ private let testMetrics = MenuMetrics(
 
 @MainActor @Test func informationViewIsWideEnoughForItsTextWhileTheMenuIsClosed() throws {
   let menu = NSMenu()
-  let renderer = MenuRenderer(metrics: testMetrics) { _ in }
+  let renderer = MenuRenderer(metrics: testMetrics, infoStyle: .secondaryView) { _ in }
   renderer.apply([row("detail.0.0", "Status: Observing", .info)], to: menu)
   let item = try #require(menu.items.first)
   let view = try #require(infoView(of: item))
@@ -129,7 +135,8 @@ private let testMetrics = MenuMetrics(
   // Details lines that macOS 27 cut off with an ellipsis.
   for text in ["Current Audio: Stereo (OSStatus 0)", "Automatic Ear Detection: Unknown"] {
     let menu = NSMenu()
-    MenuRenderer(metrics: testMetrics) { _ in }.apply([row("detail.0.0", text, .info)], to: menu)
+    MenuRenderer(metrics: testMetrics, infoStyle: .secondaryView) { _ in }.apply(
+      [row("detail.0.0", text, .info)], to: menu)
     let item = try #require(menu.items.first)
     let view = try #require(infoView(of: item))
     // An open menu places the view of its widest row at its left edge, at the view's own width.
@@ -185,7 +192,7 @@ private let testMetrics = MenuMetrics(
 }
 
 @MainActor @Test func newStateUpdatesTheItemsOfAnOpenMenuInPlace() throws {
-  let renderer = MenuRenderer { _ in }
+  let renderer = MenuRenderer(infoStyle: .secondaryView) { _ in }
   let menu = NSMenu()
   func rows(count: Int, output: String, warning: Bool) -> [MenuRow] {
     var rows = [row("monopods", "MonoPods", .header)]
@@ -229,8 +236,10 @@ private let testMetrics = MenuMetrics(
   #expect(menu.items[2] === details)
 }
 
-@MainActor @Test func aRowThatChangesKindGetsANewItem() throws {
-  let renderer = MenuRenderer { _ in }
+@MainActor @Test(arguments: InfoRowStyle.allCases)
+func aRowThatChangesKindGetsANewItem(style: InfoRowStyle) throws {
+  var performed: [MenuCommand] = []
+  let renderer = MenuRenderer(infoStyle: style) { performed.append($0) }
   let menu = NSMenu()
   renderer.apply([row("x", "Resume", .action(.resume, enabled: true, key: ""))], to: menu)
   let action = try #require(menu.items.first)
@@ -238,7 +247,79 @@ private let testMetrics = MenuMetrics(
   let info = try #require(menu.items.first)
   #expect(info !== action)
   #expect(!info.isEnabled)
+  #expect(info.action == nil)
+  #expect((info.view is InfoRowView) == (style == .secondaryView))
   #expect(menu.items.count == 1)
+
+  renderer.apply([row("x", "Resume", .action(.resume, enabled: true, key: ""))], to: menu)
+  let again = try #require(menu.items.first)
+  #expect(again !== info)
+  #expect(again.isEnabled)
+  #expect(again.view == nil)
+  withExtendedLifetime(renderer) { menu.performActionForItem(at: 0) }
+  #expect(performed == [.resume])
+}
+
+@Test func informationRowStyleFollowsTheSystemVersion() {
+  let macOS27 = ProcessInfo.processInfo.isOperatingSystemAtLeast(
+    OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0))
+  #expect(InfoRowStyle.system == (macOS27 ? .secondaryView : .disabledItem))
+}
+
+@MainActor @Test func informationRowsBeforeMacOS27AreDisabledNativeItems() throws {
+  let menu = NSMenu()
+  MenuRenderer(metrics: testMetrics, infoStyle: .disabledItem) { _ in }.apply(
+    [
+      row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro"),
+      row("version.0", "Version 1.0.1 (11)", .info),
+    ], to: menu)
+  #expect(!menu.autoenablesItems)
+  let summary = menu.items[0]
+  #expect(!summary.isEnabled)
+  #expect(summary.action == nil)
+  #expect(summary.view == nil)
+  #expect(summary.title == "One AirPod in Use")
+  #expect(summary.attributedTitle == nil)
+  #expect(summary.image != nil)
+  let version = menu.items[1]
+  #expect(!version.isEnabled)
+  #expect(version.view == nil)
+  #expect(version.title == "Version 1.0.1 (11)")
+  #expect(version.image == nil)
+}
+
+@MainActor @Test func nativeInformationRowsUpdateInPlaceInAnOpenMenu() throws {
+  let renderer = MenuRenderer(infoStyle: .disabledItem) { _ in }
+  let menu = NSMenu()
+  func rows(summary: String, symbol: String?, output: String) -> [MenuRow] {
+    [
+      row("monopods", "MonoPods", .header),
+      row("summary.0", summary, .info, symbol: symbol),
+      row("details", "Details", .submenu([row("detail.0.0", "Audio Output: \(output)", .info)])),
+    ]
+  }
+  let onePod = rows(summary: "One AirPod in Use", symbol: "airpodspro", output: "AirPods")
+  renderer.apply(onePod, to: menu)
+  let summary = menu.items[1]
+  #expect(summary.image != nil)
+  let submenu = try #require(menu.items[2].submenu)
+  let output = submenu.items[0]
+
+  renderer.apply(rows(summary: "Two AirPods in Use", symbol: nil, output: "Speakers"), to: menu)
+
+  #expect(menu.items[1] === summary)
+  #expect(summary.title == "Two AirPods in Use")
+  #expect(summary.image == nil)
+  #expect(!summary.isEnabled)
+  #expect(summary.view == nil)
+  #expect(menu.items[2].submenu === submenu)
+  #expect(submenu.items[0] === output)
+  #expect(output.title == "Audio Output: Speakers")
+  #expect(!output.isEnabled)
+
+  renderer.apply(onePod, to: menu)
+  #expect(menu.items[1] === summary)
+  #expect(summary.image != nil)
 }
 
 @MainActor @Test func separatorRowsBecomeNativeSeparators() {
@@ -266,8 +347,9 @@ private final class RemovalRecordingMenu: NSMenu {
   }
 }
 
-@MainActor @Test func stableRowsAreNeverDetachedWhenOtherRowsComeAndGo() {
-  let renderer = MenuRenderer(metrics: .fallback) { _ in }
+@MainActor @Test(arguments: InfoRowStyle.allCases)
+func stableRowsAreNeverDetachedWhenOtherRowsComeAndGo(style: InfoRowStyle) {
+  let renderer = MenuRenderer(metrics: .fallback, infoStyle: style) { _ in }
   let candidates = [
     row("warning.0", "Warning A", .info),
     row("warning.1", "Warning B", .info),

@@ -76,6 +76,27 @@ public struct MenuMetrics: Equatable, Sendable {
   }
 }
 
+/// How the menu draws an information row.
+///
+/// `system` is the only place that decides by the version of macOS. The view of
+/// `secondaryView` lines up with standard titles only through the constants of
+/// `MenuMetrics.fallback`, and those were measured in open macOS 27 menus. Earlier versions lay out
+/// menus differently (macOS 15 measures a state column of 9 pt instead of 14), so a view placed
+/// with those constants could sit off the column of standard titles. There the rows stay disabled
+/// native items, as in MonoPods 1.0.0: AppKit dims them but aligns them on every version.
+public enum InfoRowStyle: CaseIterable, Sendable {
+  /// A disabled item whose own view draws text and symbol in the secondary label color.
+  case secondaryView
+  /// A disabled native item with title and image, dimmed and aligned by AppKit.
+  case disabledItem
+
+  /// The style for the running version of macOS.
+  public static var system: InfoRowStyle {
+    if #available(macOS 27, *) { return .secondaryView }
+    return .disabledItem
+  }
+}
+
 /// Where an information row draws its symbol and its text, measured from the menu's left edge.
 struct InfoRowLayout: Equatable {
   var symbolInset: CGFloat
