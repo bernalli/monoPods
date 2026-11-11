@@ -252,7 +252,7 @@ private let testMetrics = MenuMetrics(
   #expect(menu.items[1].isSeparatorItem)
 }
 
-@MainActor private final class RemovalRecordingMenu: NSMenu {
+private final class RemovalRecordingMenu: NSMenu {
   var removedItems: [NSMenuItem] = []
 
   override func removeItem(_ item: NSMenuItem) {
