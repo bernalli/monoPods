@@ -82,6 +82,35 @@ private let testMetrics = MenuMetrics(
   #expect(renderer.infoLayouts(for: unchecked)[1] == InfoRowLayout(symbolInset: 17, textInset: 17))
 }
 
+@MainActor @Test func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
+  // In an open macOS 27 menu the title field of a standard item starts 14 pt from the menu's
+  // edge, 28 pt with a state column, and 20 pt further in a group with images. The label of an
+  // information row draws its text with the same cell padding, so its field starts there too.
+  let metrics = MenuMetrics.system
+  #expect(metrics.titleInset == 14)
+  #expect(metrics.stateColumn == 14)
+  #expect(metrics.imageColumn == 20)
+  let renderer = MenuRenderer(metrics: metrics) { _ in }
+  let main = [
+    row("monopods", "MonoPods", .header),
+    row("summary.0", "No AirPods Audio Output", .info, symbol: "airpodspro"),
+    row("warning.0.1", "login.", .info),
+    row("details", "Details", .submenu([]), symbol: "info.circle"),
+    row("separator", "", .separator),
+    row("version.0", "Version 1.0.1 (11)", .info),
+    row("about", "About MonoPods", .action(.about, enabled: true, key: "")),
+  ]
+  let layouts = renderer.infoLayouts(for: main)
+  #expect(layouts[1] == InfoRowLayout(symbolInset: 14, textInset: 34))
+  #expect(layouts[2] == InfoRowLayout(symbolInset: 14, textInset: 34))
+  #expect(layouts[5] == InfoRowLayout(symbolInset: 14, textInset: 14))
+  let options = [
+    row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
+    row("login.caption.0", "Applies from the next login.", .info),
+  ]
+  #expect(renderer.infoLayouts(for: options)[1] == InfoRowLayout(symbolInset: 28, textInset: 48))
+}
+
 @MainActor @Test func informationViewIsWideEnoughForItsTextWhileTheMenuIsClosed() throws {
   let menu = NSMenu()
   let renderer = MenuRenderer(metrics: testMetrics) { _ in }
@@ -121,9 +150,9 @@ private let testMetrics = MenuMetrics(
   let metrics = MenuMetrics.measure()
   #expect((16...40).contains(metrics.rowHeight))
   #expect((0...40).contains(metrics.stateColumn))
-  #expect((8...48).contains(metrics.imageColumn))
   #expect((4...60).contains(metrics.trailingInset))
   #expect(metrics.titleInset == MenuMetrics.fallback.titleInset)
+  #expect(metrics.imageColumn == MenuMetrics.fallback.imageColumn)
 }
 
 @MainActor @Test func selectableRowsKeepTheStandardLookAndRunTheirCommand() throws {

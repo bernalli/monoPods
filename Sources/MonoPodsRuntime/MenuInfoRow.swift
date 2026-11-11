@@ -2,10 +2,10 @@ import AppKit
 
 /// The layout of standard menu items, so that information rows drawn by a view line up with them.
 ///
-/// AppKit has no API for the position of an item's title. Row height and the widths of the state
-/// and image columns are measured from `NSMenu.size`. On macOS 27 an image does not widen a menu
-/// measured off screen, so the image column then falls back to the value seen on screen. The inset
-/// of a plain title from the menu's edge cannot be measured this way and is the macOS 27 value.
+/// AppKit has no API for the position of an item's title. Row height, the width of the state column
+/// and the space after a title are measured from `NSMenu.size`. The inset of a plain title and the
+/// width of the image column cannot be measured this way; they are the values of an open macOS 27
+/// menu, documented in `fallback`.
 public struct MenuMetrics: Equatable, Sendable {
   /// The height of one standard item.
   public var rowHeight: CGFloat
@@ -29,23 +29,27 @@ public struct MenuMetrics: Equatable, Sendable {
     self.trailingInset = trailingInset
   }
 
-  /// Values seen on macOS 27; also used when a measurement is implausible.
+  /// Values of an open macOS 27 menu; also used when a measurement is implausible.
+  ///
+  /// - `titleInset`: in an open menu the title field of a standard item starts 14 pt from the
+  ///   menu's edge (28 pt with a state column). Its cell draws the text with the same padding as
+  ///   the label of an information row, so the label's field starts at the same inset.
+  /// - `imageColumn`: in a group with images, standard titles start 20 pt further than in a group
+  ///   without (40 px on a Retina screen). A menu measured off screen ignores images, and in the
+  ///   running app `NSMenu.size` gave about 1 pt less than the shift seen on screen.
   public static let fallback = MenuMetrics(
-    rowHeight: 24, titleInset: 17, stateColumn: 14, imageColumn: 22.5, trailingInset: 16)
+    rowHeight: 24, titleInset: 14, stateColumn: 14, imageColumn: 20, trailingInset: 19)
 
   /// Measured once, from menus that are never shown.
   @MainActor public static let system = measure()
 
   @MainActor static func measure() -> MenuMetrics {
     let title = "MonoPods"
-    func size(items: Int = 1, state: NSControl.StateValue = .off, image: Bool = false) -> NSSize {
+    func size(items: Int = 1, state: NSControl.StateValue = .off) -> NSSize {
       let menu = NSMenu()
       for _ in 0..<items {
         let item = menu.addItem(withTitle: title, action: nil, keyEquivalent: "")
         item.state = state
-        if image {
-          item.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
-        }
       }
       return menu.size
     }
@@ -65,8 +69,7 @@ public struct MenuMetrics: Equatable, Sendable {
       titleInset: fallback.titleInset,
       stateColumn: plausible(
         size(state: .on).width - plain.width, in: 0...40, else: fallback.stateColumn),
-      imageColumn: plausible(
-        size(image: true).width - plain.width, in: 8...48, else: fallback.imageColumn),
+      imageColumn: fallback.imageColumn,
       trailingInset: plausible(
         plain.width - fallback.titleInset - width, in: 4...60, else: fallback.trailingInset))
   }
