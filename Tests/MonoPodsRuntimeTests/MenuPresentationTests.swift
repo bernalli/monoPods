@@ -14,13 +14,12 @@ private func menuSnapshot() -> EngineSnapshot {
 }
 
 private func presentation(
-  _ snapshot: EngineSnapshot? = menuSnapshot(), automation: Bool = true,
-  route: String = "AirPods Pro", status: String = "Observing",
+  _ snapshot: EngineSnapshot? = menuSnapshot(), route: String = "AirPods Pro",
+  status: String = "Observing",
   login: String = LoginText.nextLogin, model: AirPodsModel? = AirPodsModel.model(productID: 0x2014)
 ) -> MenuPresentation {
   MenuPresentation(
-    snapshot: snapshot, automation: automation, routeName: route, routeModel: model,
-    status: status, loginCaption: login)
+    snapshot: snapshot, routeName: route, routeModel: model, status: status, loginCaption: login)
 }
 
 @Test func healthyMenuKeepsDiagnosticsInDetails() {
@@ -33,12 +32,6 @@ private func presentation(
   #expect(!menu.summary.contains("Mono"))
 }
 
-@Test func disabledAutomationDoesNotClaimToBeSwitching() {
-  let menu = presentation(automation: false)
-  #expect(menu.summary == "Automatic Switching Off")
-  #expect(menu.warnings.isEmpty)
-}
-
 @Test func missingCommandReceiptDoesNotCreateAFailureWarning() {
   var snapshot = menuSnapshot()
   snapshot.lastCompleted = nil
@@ -49,10 +42,10 @@ private func presentation(
   #expect(presentation(nil, status: "Starting").details.contains("Last Command: None Yet"))
 }
 
-@Test func detectionOffStaysVisibleEvenWithAutomationOff() {
+@Test func detectionOffIsShownAsTheSummary() {
   var snapshot = menuSnapshot()
   snapshot.detection = .off
-  let menu = presentation(snapshot, automation: false)
+  let menu = presentation(snapshot)
   #expect(menu.summary == "Automatic Ear Detection Off")
   #expect(menu.warnings.contains { $0.contains("Bluetooth Settings") })
 }
@@ -67,17 +60,17 @@ private func presentation(
   var snapshot = menuSnapshot()
   snapshot.blocked = true
   snapshot.detection = .off
-  let menu = presentation(snapshot, automation: false, login: LoginText.failed)
+  let menu = presentation(snapshot, login: LoginText.failed)
   #expect(menu.summary == "Automation Blocked")
   #expect(menu.warnings.contains { $0.contains("recovery") })
   #expect(menu.warnings.contains { $0.contains("Bluetooth Settings") })
   #expect(menu.warnings.contains(LoginText.failed))
 }
 
-@Test func failedCommandIsVisibleEvenWithAutomationOff() {
+@Test func failedCommandIsShownAsTheSummary() {
   var snapshot = menuSnapshot()
   snapshot.lastCompleted = CommandReceipt(id: 2, target: .stereo, exitCode: 7)
-  let menu = presentation(snapshot, automation: false)
+  let menu = presentation(snapshot)
   #expect(menu.summary == "Audio Change Failed")
   #expect(menu.details.contains("Last Command: Stereo (Exit 7)"))
   #expect(!menu.warnings.isEmpty)
@@ -86,7 +79,7 @@ private func presentation(
 @Test func unhealthyStreamIsNotPresentedAsHealthyOrJustOff() {
   var snapshot = menuSnapshot()
   snapshot.healthy = false
-  let menu = presentation(snapshot, automation: false)
+  let menu = presentation(snapshot)
   #expect(menu.summary == "Ear Detection Unavailable")
   #expect(!menu.warnings.isEmpty)
 }
@@ -232,13 +225,11 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
 @Test func airPodsMaxAreFlaggedAsUnsupported() {
   for id in [0x200A, 0x201F, 0x202D] {
     let model = knownModel(id)
-    for automation in [true, false] {
-      let menu = presentation(automation: automation, route: "Headphones", model: model)
-      #expect(menu.summary == "AirPods Max Not Supported")
-      #expect(menu.symbol == "airpodsmax")
-      #expect(menu.warnings == [maxWarning])
-      #expect(menu.details.contains("Model: \(model?.name ?? "")"))
-    }
+    let menu = presentation(route: "Headphones", model: model)
+    #expect(menu.summary == "AirPods Max Not Supported")
+    #expect(menu.symbol == "airpodsmax")
+    #expect(menu.warnings == [maxWarning])
+    #expect(menu.details.contains("Model: \(model?.name ?? "")"))
   }
 }
 

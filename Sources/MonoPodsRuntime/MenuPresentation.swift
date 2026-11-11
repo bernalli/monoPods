@@ -9,8 +9,8 @@ public struct MenuPresentation: Equatable, Sendable {
   public let details: [String]
 
   public init(
-    snapshot: EngineSnapshot?, automation: Bool, routeName: String, routeModel: AirPodsModel?,
-    status: String, loginCaption: String
+    snapshot: EngineSnapshot?, routeName: String, routeModel: AirPodsModel?, status: String,
+    loginCaption: String
   ) {
     let blocked = snapshot?.blocked == true
     let failed = (snapshot?.lastCompleted?.exitCode ?? 0) != 0
@@ -69,13 +69,10 @@ public struct MenuPresentation: Equatable, Sendable {
       summary = "Ear Detection Unavailable"
       symbol = "exclamationmark.triangle"
     } else if withoutEarDetection {
-      // Only AirPods Max lack ear detection. This outranks automation off, startup and the ear
-      // count: with this output none of them can lead to a switch.
+      // Only AirPods Max lack ear detection. This outranks startup and the ear count: with this
+      // output neither can lead to a switch.
       summary = "AirPods Max Not Supported"
       symbol = "airpodsmax"
-    } else if !automation {
-      summary = "Automatic Switching Off"
-      symbol = "pause.circle"
     } else if snapshot == nil || snapshot?.operational == false {
       summary = status == "Waiting for the command owner" ? "Waiting for MonoPods…" : "Starting…"
       symbol = "hourglass"

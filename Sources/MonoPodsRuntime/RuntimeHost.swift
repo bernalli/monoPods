@@ -14,7 +14,6 @@ public enum LoginText {
 
 @MainActor public final class RuntimeHost: ObservableObject {
   @Published public var menuVisible = false
-  @Published public var automation = true
   @Published public private(set) var launchAtLogin = true
   @Published public private(set) var loginCaption = LoginText.nextLogin
   @Published public private(set) var status = "Starting"
@@ -129,10 +128,12 @@ public enum LoginText {
       let files = handoffFiles
       self.files = files
       if let data = try files.read("preferences.json") {
-        preferences = try ControlPreferences.decode(data)
+        let saved = try ControlPreferences.decode(data)
+        preferences = saved.migrated()
+        // A file of 1.0.0 with automatic switching off is written again with it on.
+        preferencesDirty = preferences != saved
       }
       menuVisible = preferences.menuBarVisible
-      automation = preferences.automationEnabled
       launchAtLogin = preferences.launchAtLogin
       agent = LaunchAgentFile.installed(bundle, location: location)
       if agent == nil { loginCaption = LoginText.notInstalled }
@@ -392,11 +393,12 @@ public enum LoginText {
       fifo?.enqueue(.journalLoaded(.blocked))
     }
   }
-  /// Ordinary commands wait while a destination build has not yet cleared its handoff.
+  /// Automatic switching has no user setting: it runs while the app runs. Ordinary commands wait
+  /// while a destination build has not yet cleared its handoff.
   private var effectiveAutomation: Bool {
     switch handoffRole {
-    case .destination, .recovering: return automation && handoffCleared
-    default: return automation
+    case .destination, .recovering: return handoffCleared
+    default: return true
     }
   }
   private var activation: UpdateActivation {
@@ -663,14 +665,6 @@ public enum LoginText {
   }
   public func reopen() {
     if owner != nil { fifo?.enqueue(.reopen) } else { channel?.send("reopen") }
-  }
-  public func setAutomation(_ enabled: Bool) {
-    guard enabled != automation else { return }
-    automation = enabled
-    preferences.automationEnabled = enabled
-    preferencesDirty = true
-    savePreferences()
-    fifo?.enqueue(.automation(effectiveAutomation))
   }
   public func requestMenuVisible(_ visible: Bool) {
     menuVisibilityGeneration &+= 1

@@ -2,7 +2,6 @@ import Foundation
 
 /// What a selectable menu item does. The app target maps each command to the runtime.
 public enum MenuCommand: String, CaseIterable, Sendable {
-  case automation
   case launchAtLogin
   case hideMenuBarIcon
   case checkForUpdates
@@ -47,7 +46,6 @@ public struct MenuRow: Equatable, Sendable {
 /// Everything the menu shows, read from the runtime at one moment.
 public struct MenuState: Equatable, Sendable {
   public var presentation: MenuPresentation
-  public var automation: Bool
   public var launchAtLogin: Bool
   public var loginCaption: String
   public var menuVisible: Bool
@@ -56,11 +54,10 @@ public struct MenuState: Equatable, Sendable {
   public var waitingForUpdate: Bool
 
   public init(
-    presentation: MenuPresentation, automation: Bool, launchAtLogin: Bool, loginCaption: String,
-    menuVisible: Bool, versionLabel: String, updates: UpdateMenuState, waitingForUpdate: Bool
+    presentation: MenuPresentation, launchAtLogin: Bool, loginCaption: String, menuVisible: Bool,
+    versionLabel: String, updates: UpdateMenuState, waitingForUpdate: Bool
   ) {
     self.presentation = presentation
-    self.automation = automation
     self.launchAtLogin = launchAtLogin
     self.loginCaption = loginCaption
     self.menuVisible = menuVisible
@@ -73,7 +70,6 @@ public struct MenuState: Equatable, Sendable {
 /// Fixed titles of the menu items.
 public enum MenuTitle {
   public static let header = "MonoPods"
-  public static let automation = "Automatic Mono/Stereo"
   public static let details = "Details"
   public static let options = "Options"
   public static let launchAtLogin = "Launch at Login"
@@ -97,10 +93,6 @@ public enum MenuLayout {
     for (index, warning) in menu.warnings.enumerated() {
       rows += info(warning, id: "warning.\(index)", symbol: warningSymbol)
     }
-    rows.append(
-      MenuRow(
-        id: "automation", title: MenuTitle.automation, symbol: "waveform",
-        kind: .toggle(.automation, isOn: state.automation)))
     let details = menu.details.enumerated().flatMap { index, detail in
       info(detail, id: "detail.\(index)")
     }

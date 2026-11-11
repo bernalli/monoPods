@@ -16,16 +16,16 @@ private func layoutSnapshot(count: Int? = 1) -> EngineSnapshot {
 
 private func layoutState(
   snapshot: EngineSnapshot? = layoutSnapshot(), route: String = "AirPods Pro",
-  status: String = "Observing", automation: Bool = true, launchAtLogin: Bool = true,
+  status: String = "Observing", launchAtLogin: Bool = true,
   login: String = LoginText.nextLogin, menuVisible: Bool = true,
   updates: UpdateMenuState = UpdateMenuState(available: true, canCheck: true),
   waiting: Bool = false
 ) -> MenuState {
   MenuState(
     presentation: MenuPresentation(
-      snapshot: snapshot, automation: automation, routeName: route,
-      routeModel: AirPodsModel.model(productID: 0x2014), status: status, loginCaption: login),
-    automation: automation, launchAtLogin: launchAtLogin, loginCaption: login,
+      snapshot: snapshot, routeName: route, routeModel: AirPodsModel.model(productID: 0x2014),
+      status: status, loginCaption: login),
+    launchAtLogin: launchAtLogin, loginCaption: login,
     menuVisible: menuVisible, versionLabel: "Version 1.0.1 (11)", updates: updates,
     waitingForUpdate: waiting)
 }
@@ -116,10 +116,22 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   #expect(warning.map(\.title).joined(separator: " ") == LoginText.unsupervised)
 }
 
+@Test func automaticSwitchingHasNoMenuItemToTurnItOff() {
+  // Automatic switching runs while the app runs; Quit is the way to stop it.
+  let rows = MenuLayout.rows(for: layoutState())
+  #expect(!rows.contains { $0.title == "Automatic Mono/Stereo" })
+  #expect(!rows.contains { $0.id == "automation" })
+  let hasToggle = rows.contains { row in
+    if case .toggle = row.kind { return true }
+    return false
+  }
+  #expect(!hasToggle)
+  #expect(MenuCommand(rawValue: "automation") == nil)
+  #expect(rows.last?.kind == .action(.quit, enabled: true, key: "q"))
+}
+
 @Test func togglesShowTheCurrentSettings() throws {
-  let rows = MenuLayout.rows(
-    for: layoutState(automation: false, launchAtLogin: false, menuVisible: true))
-  #expect(rows.contains { $0.kind == .toggle(.automation, isOn: false) })
+  let rows = MenuLayout.rows(for: layoutState(launchAtLogin: false, menuVisible: true))
   let options = try #require(submenu(rows, titled: "Options"))
   #expect(options.contains { $0.kind == .toggle(.launchAtLogin, isOn: false) })
   #expect(options.contains { $0.kind == .toggle(.hideMenuBarIcon, isOn: false) })

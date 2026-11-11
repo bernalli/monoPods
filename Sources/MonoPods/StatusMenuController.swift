@@ -78,10 +78,10 @@ import MonoPodsRuntime
   private var state: MenuState {
     MenuState(
       presentation: MenuPresentation(
-        snapshot: host.snapshot, automation: host.automation, routeName: host.routeName,
-        routeModel: host.routeModel, status: host.status, loginCaption: host.loginCaption),
-      automation: host.automation, launchAtLogin: host.launchAtLogin,
-      loginCaption: host.loginCaption, menuVisible: host.menuVisible,
+        snapshot: host.snapshot, routeName: host.routeName, routeModel: host.routeModel,
+        status: host.status, loginCaption: host.loginCaption),
+      launchAtLogin: host.launchAtLogin, loginCaption: host.loginCaption,
+      menuVisible: host.menuVisible,
       versionLabel: information.versionLabel, updates: updates.state,
       waitingForUpdate: host.waitingForUpdate)
   }
@@ -97,7 +97,6 @@ import MonoPodsRuntime
       return
     }
     switch command {
-    case .automation: host.setAutomation(!host.automation)
     case .launchAtLogin: host.setLaunchAtLogin(!host.launchAtLogin)
     case .hideMenuBarIcon: host.setMenuVisible(!host.menuVisible)
     case .checkForUpdates: updates.checkForUpdates()

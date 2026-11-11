@@ -66,7 +66,7 @@ private let testMetrics = MenuMetrics(
     row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro"),
     row("warning.0.1", "login.", .info),
     row(
-      "automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: true), symbol: "waveform"),
+      "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
     row("separator", "", .separator),
     row("version.0", "Version 1.0.1 (11)", .info),
   ]
@@ -77,7 +77,7 @@ private let testMetrics = MenuMetrics(
   #expect(layouts[2] == InfoRowLayout(symbolInset: 30, textInset: 52.5))
   #expect(layouts[5] == InfoRowLayout(symbolInset: 30, textInset: 30))
   var unchecked = rows
-  unchecked[3] = row("automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: false))
+  unchecked[3] = row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: false))
   unchecked[1] = row("summary.0", "One AirPod in Use", .info)
   #expect(renderer.infoLayouts(for: unchecked)[1] == InfoRowLayout(symbolInset: 17, textInset: 17))
 }
@@ -133,7 +133,7 @@ private let testMetrics = MenuMetrics(
   renderer.apply(
     [
       row(
-        "automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: true), symbol: "waveform"),
+        "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
       row("check", "Check for Updates\u{2026}", .action(.checkForUpdates, enabled: false, key: "")),
       row("report", "Report an Issue\u{2026}", .action(.reportIssue, enabled: true, key: "")),
       row("quit", "Quit MonoPods", .action(.quit, enabled: true, key: "q")),
@@ -152,7 +152,7 @@ private let testMetrics = MenuMetrics(
     menu.performActionForItem(at: 2)
     menu.performActionForItem(at: 3)
   }
-  #expect(performed == [.automation, .reportIssue, .quit])
+  #expect(performed == [.launchAtLogin, .reportIssue, .quit])
 }
 
 @MainActor @Test func newStateUpdatesTheItemsOfAnOpenMenuInPlace() throws {
@@ -161,7 +161,7 @@ private let testMetrics = MenuMetrics(
   func rows(count: Int, output: String, warning: Bool) -> [MenuRow] {
     var rows = [row("monopods", "MonoPods", .header)]
     if warning { rows.append(row("warning.0.0", "Waiting for ear detection.", .info)) }
-    rows.append(row("automation", "Automatic Mono/Stereo", .toggle(.automation, isOn: count > 0)))
+    rows.append(row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: count > 0)))
     rows.append(
       row(
         "details", "Details",
@@ -182,7 +182,7 @@ private let testMetrics = MenuMetrics(
 
   #expect(
     menu.items.map(\.title) == [
-      "MonoPods", "Waiting for ear detection.", "Automatic Mono/Stereo", "Details",
+      "MonoPods", "Waiting for ear detection.", "Launch at Login", "Details",
     ])
   #expect(menu.items[3] === details)
   #expect(details.submenu === submenu)
@@ -196,7 +196,7 @@ private let testMetrics = MenuMetrics(
   #expect(toggle.state == .off)
 
   renderer.apply(rows(count: 2, output: "AirPods Pro", warning: false), to: menu)
-  #expect(menu.items.map(\.title) == ["MonoPods", "Automatic Mono/Stereo", "Details"])
+  #expect(menu.items.map(\.title) == ["MonoPods", "Launch at Login", "Details"])
   #expect(menu.items[2] === details)
 }
 
