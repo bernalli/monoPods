@@ -574,15 +574,18 @@ public struct Engine: Sendable {
       guard epoch == streamEpoch else { break }
       invalidate()
       resetPlayback(at: now.utc)
-      if reason == .sourceUnreadable || reason == .clockChanged {
+      if reason == .clockChanged {
         faultTime = time
         faultTimeUnknown = time == nil
-      }
-      if reason == .clockChanged {
         lastStateTime = nil
       }
       if reason == .sourceUnreadable {
-        unreadableAt = time
+        if let time {
+          if faultTime.map({ time > $0 }) ?? true { faultTime = time }
+          if unreadableAt.map({ time > $0 }) ?? true { unreadableAt = time }
+        } else {
+          faultTimeUnknown = true
+        }
         query(actions: &actions)
       } else {
         failStream(at: now, actions: &actions)

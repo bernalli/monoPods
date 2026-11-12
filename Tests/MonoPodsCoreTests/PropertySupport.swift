@@ -140,7 +140,7 @@ struct ReferenceModel {
       count = nil
       playOracle.resetPlayer(at: now.utc)
       if reason == .sourceUnreadable {
-        unreadableAt = time
+        if let time, unreadableAt.map({ time > $0 }) ?? true { unreadableAt = time }
       } else {
         if reason == .clockChanged { lastState = nil }
         failStream(at: now)
@@ -570,8 +570,10 @@ func scenarioInput(roll: (UInt64) -> UInt64, model: ReferenceModel, now: Instant
     if roll(2) == 0 { foreign.deviceOrdinal = 2 } else { foreign.connectionEpoch += 1_000 }
     return state(1, at: now.utc, context: foreign)
   case 17:
+    let back = min(now.continuousNanos, roll(3) * 1_000_000_000)
     return .gap(
-      epoch: model.streamEpoch, reason: .sourceUnreadable, faultTime: roll(2) == 0 ? nil : now.utc)
+      epoch: model.streamEpoch, reason: .sourceUnreadable,
+      faultTime: roll(3) == 0 ? nil : instant(nanos: now.continuousNanos - back).utc)
   case 18:
     if roll(3) == 0 { return .gap(epoch: model.streamEpoch, reason: .transport, faultTime: nil) }
     return .heartbeat(epoch: 999, nonce: "stale", sequence: 1 + roll(100))

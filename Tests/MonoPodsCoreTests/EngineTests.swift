@@ -934,3 +934,20 @@ private func monoApplied() throws -> Engine {
     #expect(retries.count == (milliseconds < 1500 ? 1 : 0))
   }
 }
+
+@Test func unreadableFaultWatermarkNeverMovesBackwards() {
+  for order: [UInt64] in [[5, 3], [3, 5], [5, 5, 3]] {
+    var engine = readyEngine()
+    for second in order {
+      _ = engine.handle(
+        input: .gap(epoch: 1, reason: .sourceUnreadable, faultTime: instant(second).utc),
+        at: instant(6))
+    }
+    _ = engine.handle(input: .observation(observation(1, at: 4)), at: instant(6))
+    #expect(engine.snapshot.count == nil)
+    #expect(engine.snapshot.desiredTarget == nil)
+    _ = engine.handle(input: .observation(observation(2, at: 7)), at: instant(7))
+    #expect(engine.snapshot.count == 2)
+    #expect(engine.snapshot.desiredTarget == .stereo)
+  }
+}
