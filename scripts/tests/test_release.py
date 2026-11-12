@@ -699,7 +699,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_check_refuses_an_incomplete_swift_suite_before_python(self):
         shutil.copy2(SCRIPTS / 'check.sh', self.repo / 'scripts/check.sh')
-        self.command('swift', 'echo "Test run with 459 tests passed"')
+        self.command('swift', 'echo "Test run with 490 tests passed"')
         self.command('python3', 'touch python-reached')
         for name in ('swift-format', 'swiftlint', 'plutil'):
             self.command(name, 'exit 0')
@@ -715,7 +715,7 @@ class ReleaseTests(unittest.TestCase):
         (tests / 'test_failure.py').write_text(
             'import unittest\nclass Failure(unittest.TestCase):\n'
             '    def test_failure(self):\n        self.fail("fixture failure")\n')
-        self.command('swift', 'echo "Test run with 460 tests passed"')
+        self.command('swift', 'echo "Test run with 498 tests passed"')
         for name in ('swift-format', 'swiftlint', 'plutil'):
             self.command(name, 'exit 0')
         self.environment['TMPDIR'] = str(self.root)

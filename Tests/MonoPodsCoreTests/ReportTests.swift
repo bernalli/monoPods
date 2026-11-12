@@ -106,6 +106,21 @@ func launchTrace() -> TraceRecord {
   #expect(complete.records.count == 1)
 }
 
+@Test func preferencesSavedWithAutomationOffResumeAutomationAndKeepTheOtherSettings() throws {
+  // A file written by 1.0.0 after the user turned Automatic Mono/Stereo off.
+  let saved = #"{"v":1,"automationEnabled":false,"menuBarVisible":false,"launchAtLogin":false}"#
+  let decoded = try ControlPreferences.decode(Data(saved.utf8))
+  #expect(!decoded.automationEnabled)
+  let migrated = decoded.migrated()
+  #expect(migrated.automationEnabled)
+  #expect(!migrated.menuBarVisible)
+  #expect(!migrated.launchAtLogin)
+  #expect(migrated.v == 1)
+  // The migrated file is still one that 1.0.0 reads.
+  #expect(try ControlPreferences.decode(JSONEncoder().encode(migrated)) == migrated)
+  #expect(ControlPreferences().migrated() == ControlPreferences())
+}
+
 @Test func heartbeatAndControlSchemasRejectNumericBooleansUnknownKeysAndLateReceipts() throws {
   let control =
     #"{"v":1,"automationEnabled":true,"menuBarVisible":false,"launchAtLogin":false}"#

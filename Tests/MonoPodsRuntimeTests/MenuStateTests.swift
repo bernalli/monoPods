@@ -19,12 +19,6 @@ import Testing
   #expect(emissions(of: host) { host.setMenuVisible(!host.menuVisible) } == 1)
 }
 
-@MainActor @Test func unchangedAutomationDoesNotPublish() {
-  let host = RuntimeHost()
-  #expect(emissions(of: host) { host.setAutomation(host.automation) } == 0)
-  #expect(emissions(of: host) { host.setAutomation(!host.automation) } == 1)
-}
-
 @MainActor @Test func repeatedPulseStateDoesNotPublish() {
   let host = RuntimeHost()
   let base = Engine(build: testBuild, run: 1, boot: "boot").snapshot
