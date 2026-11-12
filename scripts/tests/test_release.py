@@ -715,7 +715,7 @@ class ReleaseTests(unittest.TestCase):
         (tests / 'test_failure.py').write_text(
             'import unittest\nclass Failure(unittest.TestCase):\n'
             '    def test_failure(self):\n        self.fail("fixture failure")\n')
-        self.command('swift', 'echo "Test run with 500 tests passed"')
+        self.command('swift', 'echo "Test run with 515 tests passed"')
         for name in ('swift-format', 'swiftlint', 'plutil'):
             self.command(name, 'exit 0')
         self.environment['TMPDIR'] = str(self.root)

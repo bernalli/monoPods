@@ -76,39 +76,38 @@ public enum LogArguments {
 /// Owns only its log child. Output is bounded and drained before the exit callback.
 @MainActor public final class LogProcess {
   private var child: Process?
-  private var timedOut = false
-  private var timeout: Task<Void, Never>?
-  public init() {}
+  private var termination: ChildTermination?
+  private let makeProcess: @MainActor () -> Process
+  public init() { makeProcess = { Process() } }
+  init(makeProcess: @escaping @MainActor () -> Process) { self.makeProcess = makeProcess }
   public func start(
     executable: String = "/usr/bin/log", arguments: [String], timeoutSeconds: UInt64? = nil,
     chunk: @escaping @MainActor @Sendable (Data) -> Void,
     finished: @escaping @MainActor @Sendable (Int32) -> Void
   ) throws {
     guard child == nil else { throw RuntimeError.busy }
-    let process = Process()
+    let process = makeProcess()
     let pipe = Pipe()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
     process.standardOutput = pipe
     process.standardError = FileHandle.nullDevice
     process.standardInput = FileHandle.nullDevice
-    timedOut = false
     // Check the absolute deadline off the main actor after output drains and waitUntilExit returns.
-    // A late child exit cannot succeed, even when the main-actor timeout task runs late.
+    // A late child exit cannot succeed, even when the background deadline runs late.
     // Delayed draining or scheduling can conservatively time out an earlier exit.
-    // This does not impose a deadline on callback delivery or child termination.
+    // This does not impose a deadline on callback delivery.
     let deadline = timeoutSeconds.map { ContinuousClock.now + .seconds($0) }
+    let termination = ChildTermination(timeoutSeconds: timeoutSeconds) { pid, signal in
+      // Foundation can reap before its handler acquires our lock. isRunning narrows that window;
+      // exit/reaping between this check and kill remains a residual PID-reuse race with POSIX PIDs.
+      if process.isRunning { kill(pid, signal) }
+    }
+    process.terminationHandler = { [weak termination] _ in termination?.didExit() }
     try process.run()
     child = process
-    if let timeoutSeconds {
-      timeout = Task { @MainActor [weak self] in
-        try? await Task.sleep(for: .seconds(timeoutSeconds))
-        if !Task.isCancelled {
-          self?.timedOut = true
-          self?.stop()
-        }
-      }
-    }
+    self.termination = termination
+    termination.arm(pid: process.processIdentifier)
     Task.detached {
       do {
         while let data = try pipe.fileHandleForReading.read(upToCount: 4096), !data.isEmpty {
@@ -118,22 +117,17 @@ public enum LogArguments {
         // Exit callback reports a broken capture through framing and status.
       }
       process.waitUntilExit()
+      termination.didExit()
       let status = process.terminationStatus
       let late = deadline.map { ContinuousClock.now >= $0 } ?? false
       await MainActor.run { [weak self] in
-        self?.timeout?.cancel()
-        self?.timeout = nil
+        self?.termination = nil
         self?.child = nil
-        finished(self?.timedOut == true || late ? -1 : status)
+        finished(late ? -1 : status)
       }
     }
   }
   public func stop() {
-    guard let child, child.isRunning else { return }
-    child.terminate()
-    Task { @MainActor in
-      try? await Task.sleep(for: .seconds(2))
-      if child.isRunning { kill(child.processIdentifier, SIGKILL) }
-    }
+    termination?.stop()
   }
 }

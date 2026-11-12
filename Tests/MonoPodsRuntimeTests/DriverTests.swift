@@ -144,9 +144,8 @@ func envelopeFixture() throws -> [Data] {
 
 @MainActor @Test func timedOutHistoryCannotReportSuccessfulCapture() async {
   let process = LogProcess()
-  // The timeout runs on the main actor, which a busy runner can hold for any time; a child that
-  // ends by itself, such as /bin/sleep, then exits 0 before the timeout runs. This child lives
-  // until it is killed, and the main actor is held past the deadline on purpose.
+  // This child lives until it is killed. Hold the main actor past the deadline on purpose:
+  // neither delayed watchdog scheduling nor callback delivery may turn the capture into success.
   let startFailed = Int32.min
   let code: Int32 = await withCheckedContinuation { continuation in
     do {
@@ -165,7 +164,7 @@ func envelopeFixture() throws -> [Data] {
 @MainActor @Test func childThatExitsByItselfAfterTheDeadlineIsATimeout() async {
   let process = LogProcess()
   // Hold the main actor while the child normally exits after the zero-second deadline.
-  // Once released, the timeout task and exit callback can run in either order.
+  // The background watchdog and the child's own exit can happen in either order.
   // The capture must report a timeout in both orders.
   let startFailed = Int32.min
   let code: Int32 = await withCheckedContinuation { continuation in
