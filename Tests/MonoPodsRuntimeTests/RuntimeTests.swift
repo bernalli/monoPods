@@ -283,3 +283,52 @@ func acquireReleasedLock(files: AtomicRuntimeFiles, name: String) throws -> Inst
   #expect(instant.utc.raw.count == 30 && instant.utc.raw.hasSuffix("Z"))
   #expect(abs(Double(instant.utc.nanos) / 1e9 - Date().timeIntervalSince1970) < 5)
 }
+
+@Test func diagnosticFailedReopenDoesNotCloseReusedDescriptor() throws {
+  let root = try temporaryRuntime()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let files = try AtomicRuntimeFiles(directory: root)
+  let utc = try SourceTime("2026-01-01T00:00:00Z")
+  let record = TraceRecord(
+    build: testBuild, run: 1, seq: 1, m: 1,
+    payload: .end(EndPayload(utc: utc, exitCode: 0)))
+  try DiagnosticLog(files: files).append(record)
+  let unrelated = try files.checkedFile("unrelated", flags: O_RDWR, create: true)
+  defer { close(unrelated) }
+  var limits = rlimit()
+  try #require(getrlimit(RLIMIT_NOFILE, &limits) == 0)
+  let fd = try files.checkedFile("trace-v2.jsonl", flags: O_WRONLY | O_APPEND)
+  defer { close(fd) }
+  // Keep the reserved descriptor high without exceeding the process's soft limit.
+  let minimum = Int32(min(1024, limits.rlim_cur / 2))
+  let original = fcntl(fd, F_DUPFD_CLOEXEC, minimum)
+  try #require(original >= 0)
+  var firstOpen = true
+  defer { if firstOpen { close(original) } }
+  var reused: Int32 = -1
+  defer { if reused >= 0 { close(reused) } }
+  let log = DiagnosticLog(
+    files: files, maximumBytes: 1,
+    openTrace: {
+      if firstOpen {
+        firstOpen = false
+        return original
+      }
+      try #require(fcntl(original, F_GETFD) == -1)
+      reused = fcntl(unrelated, F_DUPFD_CLOEXEC, original)
+      try #require(reused == original)
+      throw RuntimeError.io(ENOSPC)
+    })
+  do {
+    try log.append(record)
+    Issue.record("Expected the injected ENOSPC error")
+  } catch RuntimeError.io(ENOSPC) {
+    // The reopen failed after the closed trace descriptor was reused by the unrelated file.
+  } catch {
+    Issue.record("Unexpected error: \(error)")
+  }
+  #expect(reused >= 0)
+  #expect(fcntl(reused, F_GETFD) >= 0)
+  #expect(try files.read("trace-v2.jsonl") == nil)
+  #expect(try files.read("trace-v2.jsonl.1") != nil)
+}
