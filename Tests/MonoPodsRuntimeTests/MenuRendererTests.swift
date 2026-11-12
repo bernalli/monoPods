@@ -295,7 +295,8 @@ func aRowThatChangesKindGetsANewItem(style: InfoRowStyle) throws {
   #expect(version.image == nil)
 }
 
-@MainActor @Test func nativeInformationRowsUpdateInPlaceInAnOpenMenu() throws {
+@MainActor @Test(arguments: InfoRowStyle.allCases)
+func nativeInformationRowsUpdateInPlaceInAnOpenMenu(initialStyle: InfoRowStyle) throws {
   let renderer = MenuRenderer(infoStyle: .disabledItem) { _ in }
   let menu = NSMenu()
   func rows(summary: String, symbol: String?, output: String) -> [MenuRow] {
@@ -306,11 +307,14 @@ func aRowThatChangesKindGetsANewItem(style: InfoRowStyle) throws {
     ]
   }
   let onePod = rows(summary: "One AirPod in Use", symbol: "airpodspro", output: "AirPods")
+  MenuRenderer(infoStyle: initialStyle) { _ in }.apply(onePod, to: menu)
   renderer.apply(onePod, to: menu)
   let summary = menu.items[1]
   #expect(summary.image != nil)
+  #expect(summary.view == nil)
   let submenu = try #require(menu.items[2].submenu)
   let output = submenu.items[0]
+  #expect(output.view == nil)
 
   renderer.apply(rows(summary: "Two AirPods in Use", symbol: nil, output: "Speakers"), to: menu)
 

@@ -140,6 +140,7 @@ import AppKit
     // The item's own title still serves type-select; the view, if any, draws the visible text.
     setTitle(item, row.title)
     guard infoStyle == .secondaryView else {
+      if item.view != nil { item.view = nil }
       setSymbol(item, row.symbol)
       return
     }
