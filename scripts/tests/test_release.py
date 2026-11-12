@@ -21,10 +21,13 @@ FILES = (
     'Contents/Resources/MenuBarIcon.png', 'Contents/Resources/MenuBarIcon@2x.png',
     'Contents/Resources/GitHubMark.pdf', 'Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle',
     'Contents/Resources/Sparkle-LICENSE.txt',
+    'Contents/Resources/PlusJakartaSans-SemiBold.ttf',
+    'Contents/Resources/PlusJakartaSans-OFL.txt',
 )
 SOURCE_ARTIFACTS = ('Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/MenuBarIcon@2x.png',
                     'Assets/GitHubMark.pdf', 'Resources/Info.plist', 'LICENSE',
-                    'ThirdParty/Sparkle-LICENSE.txt')
+                    'ThirdParty/Sparkle-LICENSE.txt', 'Assets/Fonts/PlusJakartaSans-SemiBold.ttf',
+                    'Assets/Fonts/PlusJakartaSans-OFL.txt')
 SPARKLE_LICENSE_SHA256 = '389a4e4e9a32f059775b13a06e25a591445ba229d2838d26dd3e7c0c45127cfe'
 FRAMEWORK = '$app/Contents/Frameworks/Sparkle.framework'
 ARTIFACT = b'artifact\n'
@@ -168,11 +171,32 @@ class ReleaseTests(unittest.TestCase):
         copies = [shlex.split(line) for line in lines if line.startswith('cp Assets/')]
         self.assertEqual(copies, [['cp', 'Assets/AppIcon.icns', 'Assets/MenuBarIcon.png',
                                    'Assets/MenuBarIcon@2x.png', 'Assets/GitHubMark.pdf',
+                                   '$app/Contents/Resources/'],
+                                  ['cp', 'Assets/Fonts/PlusJakartaSans-SemiBold.ttf',
+                                   'Assets/Fonts/PlusJakartaSans-OFL.txt',
                                    '$app/Contents/Resources/']])
         resources = {name for name in FILES if name.startswith('Contents/Resources/')
                      and not name.endswith('Sparkle-LICENSE.txt')}
-        copied = {'Contents/Resources/' + Path(name).name for name in copies[0][1:-1]}
+        copied = {'Contents/Resources/' + Path(name).name for command in copies for name in command[1:-1]}
         self.assertEqual(resources, copied)
+
+    def test_font_and_license_are_the_unmodified_official_assets(self):
+        fonts = SCRIPTS.parent / 'Assets/Fonts'
+        for name, digest in (
+                ('PlusJakartaSans-SemiBold.ttf',
+                 '65dbcedb6596a41c30869729eb31cb57d1f5edfe365684314bba8a1994eaa4cb'),
+                ('PlusJakartaSans-OFL.txt',
+                 '995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99')):
+            with self.subTest(name=name):
+                self.assertEqual(hashlib.sha256((fonts / name).read_bytes()).hexdigest(), digest)
+
+    def test_manifest_rejects_missing_font_or_license(self):
+        for name in ('PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-OFL.txt'):
+            with self.subTest(name=name):
+                path = self.bundle / 'Contents/Resources' / name
+                path.unlink()
+                self.assert_rejected(self.manifest_command())
+                path.write_bytes(ARTIFACT)
 
     def test_manifest_records_full_source_commit(self):
         result = self.manifest_command('write', COMMIT)
@@ -715,7 +739,7 @@ class ReleaseTests(unittest.TestCase):
         (tests / 'test_failure.py').write_text(
             'import unittest\nclass Failure(unittest.TestCase):\n'
             '    def test_failure(self):\n        self.fail("fixture failure")\n')
-        self.command('swift', 'echo "Test run with 532 tests passed"')
+        self.command('swift', 'echo "Test run with 537 tests passed"')
         for name in ('swift-format', 'swiftlint', 'plutil'):
             self.command(name, 'exit 0')
         self.environment['TMPDIR'] = str(self.root)

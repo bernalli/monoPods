@@ -24,6 +24,7 @@ struct AboutView: View {
   let information: AppInformation
   let icon: NSImage?
   let gitHubMark: NSImage?
+  let titleFont: NSFont
   let openRepository: @MainActor () -> Void
   let openSponsors: @MainActor () -> Void
 
@@ -42,7 +43,7 @@ struct AboutView: View {
           .accessibilityHidden(true)
       }
       Text(information.name)
-        .font(.system(size: NSFont.systemFontSize + 1, weight: .bold))
+        .font(Font(titleFont))
         .padding(.top, 10)
       HStack(spacing: 5) {
         Text(information.versionLabel)
@@ -107,17 +108,21 @@ final class AboutWindow: NSWindow {
   private let information: AppInformation
   private let icon: NSImage?
   private let gitHubMark: NSImage?
+  private let titleFontURL: URL?
   private let open: @MainActor (URL) -> Void
   private let activate: @MainActor () -> Void
   private var existing: AboutWindow?
 
   public init(
     information: AppInformation, icon: NSImage?, gitHubMark: NSImage?,
+    titleFontURL: URL? = Bundle.main.url(
+      forResource: "PlusJakartaSans-SemiBold", withExtension: "ttf"),
     open: @escaping @MainActor (URL) -> Void, activate: @escaping @MainActor () -> Void
   ) {
     self.information = information
     self.icon = icon
     self.gitHubMark = gitHubMark
+    self.titleFontURL = titleFontURL
     self.open = open
     self.activate = activate
   }
@@ -138,6 +143,7 @@ final class AboutWindow: NSWindow {
     if let existing { return existing }
     let view = AboutView(
       information: information, icon: icon, gitHubMark: gitHubMark,
+      titleFont: AboutTitleFont.load(contentsOf: titleFontURL),
       openRepository: { [weak self] in self?.openRepository() },
       openSponsors: { [weak self] in self?.openSponsors() })
     let hosting = NSHostingView(rootView: view)

@@ -54,3 +54,5 @@ See [technical notes and building from source](docs/TECHNICAL.md).
 MonoPods is released under the [MIT License](LICENSE). Copyright © 2026 Samuele Martinalli.
 
 The app includes Sparkle, which has its own license; its notice is in `MonoPods.app/Contents/Resources/Sparkle-LICENSE.txt`.
+
+The app includes Plus Jakarta Sans SemiBold, licensed under SIL OFL 1.1; its notice is in `MonoPods.app/Contents/Resources/PlusJakartaSans-OFL.txt`.

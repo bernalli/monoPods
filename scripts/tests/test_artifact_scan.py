@@ -222,6 +222,20 @@ class ArtifactScanTests(unittest.TestCase):
     def test_clean_bundle_passes_and_counts_files(self):
         self.assert_passed(self.scan(), 2)
 
+    def test_bundled_font_and_license_are_scanned_without_exclusions(self):
+        for name in ('PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-OFL.txt'):
+            source = SCRIPTS.parent / 'Assets/Fonts' / name
+            self.write('Contents/Resources/' + name, source.read_bytes())
+        self.assert_passed(self.scan(), 4)
+        for name in ('PlusJakartaSans-SemiBold.ttf', 'PlusJakartaSans-OFL.txt'):
+            with self.subTest(name=name):
+                relative = 'Contents/Resources/' + name
+                path = self.bundle / relative
+                original = path.read_bytes()
+                path.write_bytes(original + TERM.encode())
+                self.assert_failed(self.scan(), relative, 0)
+                path.write_bytes(original)
+
     def test_binary_info_is_refused_without_name_terms(self):
         self.write('Contents/Info.plist', plistlib.dumps({}, fmt=plistlib.FMT_BINARY))
         self.assert_failed(self.scan(), 'Contents/Info.plist')

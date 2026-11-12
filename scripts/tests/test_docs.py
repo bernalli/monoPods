@@ -177,6 +177,9 @@ class ReadmeTests(unittest.TestCase):
                       f'Copyright © 2026 {copyright_holder()}.', license_lines)
         self.assertIn('The app includes Sparkle, which has its own license; its notice is in '
                       '`MonoPods.app/Contents/Resources/Sparkle-LICENSE.txt`.', license_lines)
+        self.assertIn('The app includes Plus Jakarta Sans SemiBold, licensed under SIL OFL 1.1; '
+                      'its notice is in `MonoPods.app/Contents/Resources/PlusJakartaSans-OFL.txt`.',
+                      license_lines)
         before = [line for line in self.lines[:self.lines.index('## License')] if line]
         self.assertEqual(before[-1],
                          'See [technical notes and building from source](docs/TECHNICAL.md).')

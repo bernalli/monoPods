@@ -45,12 +45,13 @@ source_commit=$(source_identity)
 python3 - <<'PY'
 from pathlib import Path
 root = Path.cwd()
-for path in [root / 'build', root / '.build', root / 'Assets', root / 'Resources', root / 'dist', root / 'dist/MonoPods.app']:
+for path in [root / 'build', root / '.build', root / 'Assets', root / 'Assets/Fonts', root / 'Resources', root / 'dist', root / 'dist/MonoPods.app']:
     if path.is_symlink() or (path.name == 'MonoPods.app' and path.exists()):
         raise SystemExit('Unsafe or existing output; choose a clean artifact checkout')
 for relative in ['Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/MenuBarIcon@2x.png',
                  'Assets/GitHubMark.pdf', 'Resources/Info.plist', 'LICENSE',
-                 'ThirdParty/Sparkle-LICENSE.txt']:
+                 'ThirdParty/Sparkle-LICENSE.txt', 'Assets/Fonts/PlusJakartaSans-SemiBold.ttf',
+                 'Assets/Fonts/PlusJakartaSans-OFL.txt']:
     source = root / relative
     if source.is_symlink() or not source.is_file():
         raise SystemExit('Unsafe source artifact')
@@ -75,6 +76,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin_path/MonoPods" "$app/Contents/MacOS/MonoPods"
 python3 scripts/bundle-info.py Resources/Info.plist LICENSE "$app/Contents/Info.plist" ${info_options[@]+"${info_options[@]}"}
 cp Assets/AppIcon.icns Assets/MenuBarIcon.png Assets/MenuBarIcon@2x.png Assets/GitHubMark.pdf "$app/Contents/Resources/"
+cp Assets/Fonts/PlusJakartaSans-SemiBold.ttf Assets/Fonts/PlusJakartaSans-OFL.txt "$app/Contents/Resources/"
 plutil -lint "$app/Contents/Info.plist"
 # Sparkle comes from the build products: a real directory inside .build, copied with its links.
 framework_src="$bin_path/Sparkle.framework"
