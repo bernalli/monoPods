@@ -93,8 +93,10 @@ public enum LogArguments {
     process.standardError = FileHandle.nullDevice
     process.standardInput = FileHandle.nullDevice
     timedOut = false
-    // The timeout task runs on the main actor and can run late; the deadline itself is checked
-    // against the child's exit, measured off the main actor, so a late exit is never a success.
+    // Check the absolute deadline off the main actor after output drains and waitUntilExit returns.
+    // A late child exit cannot succeed, even when the main-actor timeout task runs late.
+    // Delayed draining or scheduling can conservatively time out an earlier exit.
+    // This does not impose a deadline on callback delivery or child termination.
     let deadline = timeoutSeconds.map { ContinuousClock.now + .seconds($0) }
     try process.run()
     child = process

@@ -164,8 +164,9 @@ func envelopeFixture() throws -> [Data] {
 
 @MainActor @Test func childThatExitsByItselfAfterTheDeadlineIsATimeout() async {
   let process = LogProcess()
-  // The main actor is held past both the deadline and the child's own exit, so the timeout task
-  // cannot run before the exit callback. A capture that ended after its deadline is not complete.
+  // Hold the main actor while the child normally exits after the zero-second deadline.
+  // Once released, the timeout task and exit callback can run in either order.
+  // The capture must report a timeout in both orders.
   let startFailed = Int32.min
   let code: Int32 = await withCheckedContinuation { continuation in
     do {
