@@ -1,34 +1,36 @@
-import CryptoKit
 import Foundation
 import MonoPodsCore
 
-@MainActor private final class HistoryRead {
-  var framer = NDJSONFramer()
-  var capture = HistoryCapture()
-  var bytes = 0
-  var digest = SHA256()
-  let process = LogProcess()
-  var evidenceHash: String { digest.finalize().map { String(format: "%02x", $0) }.joined() }
-}
-
 @MainActor public final class LogTransport {
   private let driver: ObservationDriver
-  private let boot: String
   private let submit: @MainActor @Sendable (EngineInput) -> Void
   private let stream = LogProcess()
   private var framer = NDJSONFramer()
-  private var reads: [UInt64: HistoryRead] = [:]
+  private let historyReader: HistoryReader
+  var activeHistoryCount: Int { historyReader.activeCount }
+  var pendingHistoryCount: Int { historyReader.pendingCount }
   private var restart: Task<Void, Never>?
   private var running = false
   private var stopped = false
   private var pendingStart = false
-  public init(
+  public convenience init(
     driver: ObservationDriver, boot: String,
     submit: @escaping @MainActor @Sendable (EngineInput) -> Void
   ) {
+    self.init(
+      driver: driver, boot: boot, clock: { SystemClock.now().continuousNanos },
+      schedule: DeadlineAlarm.mainQueue, makeHistoryProcess: { LogProcess() }, submit: submit)
+  }
+  init(
+    driver: ObservationDriver, boot: String,
+    clock: @escaping () -> UInt64, schedule: @escaping OneShotSchedule,
+    makeHistoryProcess: @escaping @MainActor () -> any HistoryProcess,
+    submit: @escaping @MainActor @Sendable (EngineInput) -> Void
+  ) {
     self.driver = driver
-    self.boot = boot
     self.submit = submit
+    self.historyReader = HistoryReader(
+      driver: driver, boot: boot, clock: clock, schedule: schedule, makeProcess: makeHistoryProcess)
   }
   public func start() {
     guard !stopped, !running else { return }
@@ -72,41 +74,7 @@ import MonoPodsCore
     }
   }
   public func history(id: UInt64, context: ObservationContext) {
-    guard !stopped, reads[id] == nil, ContractValidation.uuid(boot) else { return }
-    let read = HistoryRead()
-    reads[id] = read
-    do {
-      try read.process.start(
-        arguments: LogArguments.history(boot: boot), timeoutSeconds: 30,
-        chunk: { data in
-          read.bytes += data.count
-          read.digest.update(data: data)
-          guard read.bytes <= 8 * 1024 * 1024 else {
-            read.capture.invalidate()
-            read.process.stop()
-            return
-          }
-          for item in read.framer.feed(data) {
-            switch item {
-            case .line(let line): read.capture.consume(line)
-            case .gap: read.capture.invalidate()
-            }
-          }
-        },
-        finished: { [weak self] code in
-          guard let self else { return }
-          self.reads.removeValue(forKey: id)
-          guard !self.stopped else { return }
-          self.driver.history(
-            read.capture, id: id, context: context, exitCode: code, truncated: read.framer.finish(),
-            evidenceHash: read.evidenceHash)
-        })
-    } catch {
-      reads.removeValue(forKey: id)
-      driver.history(
-        read.capture, id: id, context: context, exitCode: -1, truncated: true,
-        evidenceHash: read.evidenceHash)
-    }
+    historyReader.request(id: id, context: context)
   }
   public func stop() {
     stopped = true
@@ -114,7 +82,6 @@ import MonoPodsCore
     restart = nil
     pendingStart = false
     stream.stop()
-    for read in reads.values { read.process.stop() }
-    reads.removeAll()
+    historyReader.stop()
   }
 }
