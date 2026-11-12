@@ -13,6 +13,9 @@ import UniformTypeIdentifiers
 
 enum RenderFailure: Error { case invalid, output, font }
 let wordmarkPostScriptName = "PlusJakartaSans-SemiBold"
+// render() requires the repository root as the working directory.
+let wordmarkFontURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  .appendingPathComponent("Assets/Fonts/PlusJakartaSans-SemiBold.ttf")
 
 func registerWordmarkFont(at url: URL) throws {
   guard
@@ -27,7 +30,9 @@ func registerWordmarkFont(at url: URL) throws {
 
 func wordmarkFont(size: CGFloat) throws -> NSFont {
   guard let font = NSFont(name: wordmarkPostScriptName, size: size),
-    font.fontName == wordmarkPostScriptName
+    font.fontName == wordmarkPostScriptName,
+    let source = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL,
+    source.resolvingSymlinksInPath().path == wordmarkFontURL.resolvingSymlinksInPath().path
   else { throw RenderFailure.font }
   return font
 }
@@ -449,8 +454,7 @@ func render() throws {
     (try? docs.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true,
     (try? out.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true
   else { throw RenderFailure.output }
-  try registerWordmarkFont(
-    at: root.appendingPathComponent("Assets/Fonts/PlusJakartaSans-SemiBold.ttf"))
+  try registerWordmarkFont(at: wordmarkFontURL)
   try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
   try png(socialPreview(), at: out.appendingPathComponent("social-preview.png"))
   try png(banner(), at: out.appendingPathComponent("banner.png"))
