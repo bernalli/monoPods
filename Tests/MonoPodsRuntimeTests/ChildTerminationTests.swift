@@ -242,3 +242,63 @@ private final class ChildClock: @unchecked Sendable {
   #expect(callbacks == 2)
   process.stop()
 }
+
+@Test func childTerminationNeverSignalsANonPositivePid() {
+  for pid: pid_t in [0, -1] {
+    let clock = ChildClock()
+    let child = clock.termination(seconds: 0)
+    child.arm(pid: pid)
+    child.stop()
+    clock.advance(10000)
+    #expect(clock.recorded.isEmpty)
+    #expect(clock.pending == 0)
+  }
+}
+
+@Test func secondChildArmCannotRetargetSignals() {
+  let clock = ChildClock()
+  let child = clock.termination()
+  child.arm(pid: 42)
+  child.arm(pid: 43)
+  #expect(clock.pending == 1)
+  clock.advance(1000)
+  clock.advance(3000)
+  #expect(clock.recorded == [.init(pid: 42, value: SIGTERM), .init(pid: 42, value: SIGKILL)])
+}
+
+@Test func zeroSecondChildDeadlineSignalsOnTheFirstTick() {
+  let clock = ChildClock()
+  clock.advance(100)
+  let child = clock.termination(seconds: 0)
+  child.arm(pid: 42)
+  #expect(clock.recorded.isEmpty)
+  clock.advance(100)
+  #expect(clock.recorded == [.init(pid: 42, value: SIGTERM)])
+}
+
+@Test func overflowingChildTimeoutNeverFiresButStopStillWorks() {
+  let clock = ChildClock()
+  clock.advance(100)
+  let child = clock.termination(seconds: UInt64.max)
+  child.arm(pid: 42)
+  clock.advance(1_000_000_000)
+  #expect(clock.recorded.isEmpty)
+  #expect(clock.pending == 1)
+  child.stop()
+  #expect(clock.recorded == [.init(pid: 42, value: SIGTERM)])
+}
+
+@Test func childStopBeforeArmAndRepeatedExitStayInert() {
+  let clock = ChildClock()
+  let child = clock.termination(seconds: nil)
+  child.stop()
+  #expect(clock.recorded.isEmpty)
+  #expect(clock.pending == 0)
+  child.arm(pid: 42)
+  #expect(clock.pending == 0)
+  child.didExit()
+  child.didExit()
+  child.stop()
+  clock.advance(10000)
+  #expect(clock.recorded.isEmpty)
+}
