@@ -327,3 +327,35 @@ private func isGap(_ input: EngineInput) -> Bool {
     complete, id: 4, context: context, exitCode: 0, truncated: false, evidenceHash: hash)
   #expect(evidence() == [.historyAccessible])
 }
+
+@MainActor @Test func historySelectsTheStateWhenATransitionSharesItsSourceTime() throws {
+  let fixture = try envelopeFixture()
+  let state = fixture[17]
+  let stamp = try #require(
+    (JSONSerialization.jsonObject(with: state) as? [String: Any])?["timestamp"] as? String)
+  var object = try #require(JSONSerialization.jsonObject(with: fixture[18]) as? [String: Any])
+  object["timestamp"] = stamp
+  let transition = try JSONSerialization.data(withJSONObject: object)
+  let finished = Data(#"{"count":2,"finished":1}"#.utf8)
+  let now = Instant(continuousNanos: 2, utc: try SourceTime("2026-11-06T12:00:00Z"))
+  let context = ObservationContext(
+    routeEpoch: 1, streamEpoch: 1, connectionEpoch: 2, deviceOrdinal: 1)
+  for rows in [[state, transition], [transition, state]] {
+    var inputs: [EngineInput] = []
+    let driver = ObservationDriver(clock: { now }, submit: { inputs.append($0) })
+    driver.route(address: "00:11:22:33:44:55")
+    driver.connected(address: "00:11:22:33:44:55", at: try SourceTime("2026-11-05T12:00:00Z"))
+    _ = try driver.beginStream(nonce: "test")
+    var capture = HistoryCapture()
+    for row in rows + [finished] { capture.consume(row) }
+    driver.history(
+      capture, id: 1, context: context, exitCode: 0, truncated: false,
+      evidenceHash: ArtifactHash.data(Data("history".utf8)))
+    guard case .history(_, _, let observation, let complete)? = inputs.last else {
+      Issue.record("Expected a history reply")
+      continue
+    }
+    #expect(complete)
+    #expect(observation?.value == .count(2, detection: .on))
+  }
+}

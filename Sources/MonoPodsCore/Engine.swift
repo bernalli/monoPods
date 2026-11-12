@@ -580,7 +580,9 @@ public struct Engine: Sendable {
         lastStateTime = nil
       }
       if reason == .sourceUnreadable {
-        if let time {
+        // A fault is never later than the instant that reports it. Without this bound a row
+        // stamped in the future would hold the monotonic watermark until the clock passes it.
+        if let time = time.map({ min($0, now.utc) }) {
           if faultTime.map({ time > $0 }) ?? true { faultTime = time }
           if unreadableAt.map({ time > $0 }) ?? true { unreadableAt = time }
         } else {

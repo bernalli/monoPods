@@ -259,25 +259,64 @@ import Testing
     let harness = try HistoryHarness()
     var random = seed
     var nextID: UInt64 = 1
+    var requested: [UInt64: ObservationContext] = [:]
+    var checkedReplies = 0
+    var lastReply: UInt64 = 0
+    var repliesAtStop: Int?
     for step in 0..<300 {
       random = random &* 6_364_136_223_846_793_005 &+ 1
-      switch (random >> 32) % 7 {
+      switch (random >> 32) % 8 {
       case 0...2:
         let context = ObservationContext(
           routeEpoch: 1 + random % 3, streamEpoch: 1 + random % 5,
           connectionEpoch: 1 + random % 7, deviceOrdinal: 1)
+        requested[nextID] = context
         harness.request(nextID, context: context)
         nextID += 1
       case 3: harness.processes.last(where: \.running)?.finish(random % 2 == 0 ? 0 : -1)
       case 4: harness.clock.advance(to: harness.clock.now + random % 2_000_000_001)
       case 5: harness.clock.fireEarly()
+      case 6:
+        // Callbacks of a child that already ended: a second exit and a late chunk.
+        if let ended = harness.processes.first(where: { !$0.running }) {
+          ended.finish(random % 2 == 0 ? 0 : -1)
+          ended.chunk?(Data("late".utf8))
+        }
       default:
-        if step > 250 { harness.transport.stop() } else { harness.failNextStart = true }
+        // Even seeds stop near the end. Odd seeds run on, so their newest request is answered.
+        if step > 250, seed % 2 == 0 {
+          harness.transport.stop()
+          repliesAtStop = repliesAtStop ?? harness.replies.count
+        } else {
+          harness.failNextStart = true
+        }
       }
       harness.assertBounds()
+      // Every reply carries the context of its own request, and replies keep the request order.
+      let replies = harness.replies
+      for reply in replies.dropFirst(checkedReplies) {
+        guard case .history(let id, let context, _, _) = reply else { continue }
+        #expect(requested[id] == context)
+        #expect(id > lastReply)
+        lastReply = id
+      }
+      checkedReplies = replies.count
     }
-    harness.transport.stop()
-    harness.processes.last(where: \.running)?.finish(-1)
+    if let repliesAtStop {
+      harness.processes.last(where: \.running)?.finish(-1)
+      harness.clock.advance(to: harness.clock.now + 2_000_000_000)
+      #expect(harness.replies.count == repliesAtStop)
+    } else {
+      // Every child ends and the throttle elapses: the newest request is answered.
+      for _ in 0..<3 {
+        harness.processes.last(where: \.running)?.finish(-1)
+        harness.clock.advance(to: harness.clock.now + 1_000_000_000)
+      }
+      var newest: UInt64?
+      if case .history(let id, _, _, _)? = harness.replies.last { newest = id }
+      #expect(newest == nextID - 1)
+      harness.transport.stop()
+    }
     #expect(harness.transport.activeHistoryCount == 0)
     #expect(harness.transport.pendingHistoryCount == 0)
   }
