@@ -161,6 +161,44 @@ func envelopeFixture() throws -> [Data] {
   }
   #expect(code == -1)
 }
+
+@MainActor @Test func childThatExitsByItselfAfterTheDeadlineIsATimeout() async {
+  let process = LogProcess()
+  // Hold the main actor while the child normally exits after the zero-second deadline.
+  // Once released, the timeout task and exit callback can run in either order.
+  // The capture must report a timeout in both orders.
+  let startFailed = Int32.min
+  let code: Int32 = await withCheckedContinuation { continuation in
+    do {
+      try process.start(
+        executable: "/bin/sleep", arguments: ["0.2"], timeoutSeconds: 0,
+        chunk: { _ in }, finished: { continuation.resume(returning: $0) })
+    } catch {
+      continuation.resume(returning: startFailed)
+      return
+    }
+    Thread.sleep(forTimeInterval: 1)
+  }
+  #expect(code == -1)
+}
+
+@MainActor @Test func childThatExitsBeforeTheDeadlineKeepsItsStatus() async {
+  let process = LogProcess()
+  // An early exit keeps its status only while scheduling delays stay below the deadline: delays
+  // can time out an earlier exit on the safe side. A loaded CI runner delayed this check by more
+  // than 30 s, so the deadline is far beyond any scheduling delay.
+  let startFailed = Int32.min
+  let code: Int32 = await withCheckedContinuation { continuation in
+    do {
+      try process.start(
+        executable: "/usr/bin/false", arguments: [], timeoutSeconds: 3600,
+        chunk: { _ in }, finished: { continuation.resume(returning: $0) })
+    } catch {
+      continuation.resume(returning: startFailed)
+    }
+  }
+  #expect(code == 1)
+}
 @Test func envelopeRejectsMissingKeysAndMistypedMetadata() throws {
   let line = try envelopeFixture()[0]
   let object = try #require(JSONSerialization.jsonObject(with: line) as? [String: Any])
