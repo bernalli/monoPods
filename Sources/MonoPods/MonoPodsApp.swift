@@ -7,9 +7,9 @@ import SwiftUI
   var host: RuntimeHost?
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
   {
-    host?.reopen()
-    return true
+    ApplicationReopen.handle { host?.reopen() }
   }
+  func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     // The source build waiting for its replacement refuses Sparkle's Quit, not the session's.
     if host?.waitingForUpdate == true {
@@ -37,11 +37,12 @@ import SwiftUI
       Self.statusMenu = StatusMenuController(host: model, updates: updates)
     }
   }
-  /// The menu bar item is AppKit (see `StatusMenuController`); SwiftUI keeps only the app
-  /// commands. An accessory app never shows the empty Settings scene.
+  /// The AppKit menu bar item owns the UI. This placeholder supplies only app commands:
+  /// its Settings command is removed, and the delegate suppresses launch and reopen windows.
   var body: some Scene {
     Settings { EmptyView() }
       .commands {
+        CommandGroup(replacing: .appSettings) {}
         CommandGroup(replacing: .appTermination) {
           Button("Quit MonoPods") { host.quit() }.keyboardShortcut("q")
         }
