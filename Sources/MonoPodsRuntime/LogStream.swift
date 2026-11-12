@@ -93,6 +93,9 @@ public enum LogArguments {
     process.standardError = FileHandle.nullDevice
     process.standardInput = FileHandle.nullDevice
     timedOut = false
+    // The timeout task runs on the main actor and can run late; the deadline itself is checked
+    // against the child's exit, measured off the main actor, so a late exit is never a success.
+    let deadline = timeoutSeconds.map { ContinuousClock.now + .seconds($0) }
     try process.run()
     child = process
     if let timeoutSeconds {
@@ -114,11 +117,12 @@ public enum LogArguments {
       }
       process.waitUntilExit()
       let status = process.terminationStatus
+      let late = deadline.map { ContinuousClock.now >= $0 } ?? false
       await MainActor.run { [weak self] in
         self?.timeout?.cancel()
         self?.timeout = nil
         self?.child = nil
-        finished(self?.timedOut == true ? -1 : status)
+        finished(self?.timedOut == true || late ? -1 : status)
       }
     }
   }
