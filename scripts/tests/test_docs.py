@@ -14,20 +14,20 @@ BLUETOOTH_ASKED = ('- macOS may ask again for Bluetooth access after an update, 
                    'version has a new ad hoc signature. If it asks, allow it to keep automatic '
                    'switching working.')
 BLUETOOTH_KEPT = '- Updates keep the Bluetooth access you already granted.'
-NETWORK_LINE = ('- Apart from update checks, MonoPods makes no network requests. '
+NETWORK_LINE = ('- Apart from update checks and downloads, MonoPods makes no network requests. '
                 'It reads the local system log.')
 README_TITLES = ['Install', 'Updates', 'Requirements', 'Good to know', 'License']
 README_UPDATES = [
-    'MonoPods checks for updates only when you choose Check for Updates… in its menu. It never '
-    'checks by itself.',
-    '- If a new version is available, MonoPods downloads it only after you choose to install it.',
-    '- MonoPods installs an update only after it has returned the sound to stereo, or confirmed '
-    'that there is nothing to restore. From that confirmation until the new version is running, '
-    'download included, automatic switching is suspended.',
-    '- If this cannot be confirmed in time, MonoPods does not install the update and keeps '
-    'working. After the next launch of MonoPods, you can choose Check for Updates… again.',
-    '- After a crash, MonoPods recovers its saved restore state before resuming updates. During '
-    'installation, concurrent launches wait for one complete, validated version.',
+    'Choose Check for Updates… to check for a new version. MonoPods never checks automatically '
+    'and downloads an update only when you choose to install it.',
+    '- Before downloading, MonoPods must return the sound to stereo or confirm that there is '
+    'nothing to restore. From that confirmation until the new version runs, automatic switching '
+    'is paused.',
+    '- If MonoPods cannot confirm this, it does not install the update and keeps '
+    'working. Quit and reopen MonoPods before you check again.',
+    '- After a crash, MonoPods recovers its saved audio state before it allows updates. During '
+    'installation, other launches of MonoPods stay inactive until the new version is complete '
+    'and verified.',
 ]
 AUTOMATIC_MODE_PHRASES = ('Automatic Updates', 'retries at the next launch', 'Enable Automatic Updates', 'Not Now',
                           'asks once', 'about once a day', 'by itself, ',
