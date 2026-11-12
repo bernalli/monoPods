@@ -123,6 +123,9 @@ configuration blocks operation.
 
 `scripts/bundle.sh` produces `dist/MonoPods.app`. It signs the bundle ad hoc and
 verifies its signature and `Manifest.json`; it does not notarize or launch it.
+The bundle includes Plus Jakarta Sans SemiBold and its SIL OFL 1.1 notice in
+`Contents/Resources/`. The About title registers the font for the process only,
+falling back to bold system text if it cannot load. Other app text uses the system font.
 `scripts/dmg.sh` produces `dist/MonoPods.dmg` and refuses an existing image.
 Builds from source have no update channel, so they never check for updates.
 Release builds are described in [RELEASING.md](RELEASING.md).

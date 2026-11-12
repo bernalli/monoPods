@@ -79,6 +79,8 @@ public struct BundleManifest: Codable, Sendable {
     "Contents/Resources/MenuBarIcon.png", "Contents/Resources/MenuBarIcon@2x.png",
     "Contents/Resources/GitHubMark.pdf", "Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle",
     "Contents/Resources/Sparkle-LICENSE.txt",
+    "Contents/Resources/PlusJakartaSans-SemiBold.ttf",
+    "Contents/Resources/PlusJakartaSans-OFL.txt",
   ]
   public func verify(bundle: URL) throws {
     guard v == 1, ContractValidation.hash(build),

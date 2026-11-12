@@ -38,6 +38,8 @@ import Testing
       "Contents/Resources/GitHubMark.pdf",
       "Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle",
       "Contents/Resources/Sparkle-LICENSE.txt",
+      "Contents/Resources/PlusJakartaSans-SemiBold.ttf",
+      "Contents/Resources/PlusJakartaSans-OFL.txt",
     ])
   #expect(
     !BundleManifest.required.contains("Contents/Resources/" + RuntimeLocation.harnessFileName))

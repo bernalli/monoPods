@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import Foundation
 import SwiftUI
 import Testing
@@ -127,5 +128,50 @@ private func key(_ characters: String, _ modifiers: NSEvent.ModifierFlags) -> NS
   #expect(others.count == 3)
   for event in others {
     #expect(!closes(window) { _ = window.performKeyEquivalent(with: event) })
+  }
+}
+
+private let wordmarkFont = repositoryRoot.appendingPathComponent(
+  "Assets/Fonts/PlusJakartaSans-SemiBold.ttf")
+
+@Test func wordmarkFontHasTheExpectedPostScriptName() throws {
+  let descriptors = try #require(
+    CTFontManagerCreateFontDescriptorsFromURL(wordmarkFont as CFURL) as? [CTFontDescriptor])
+  #expect(descriptors.count == 1)
+  let descriptor = try #require(descriptors.first)
+  let font = CTFontCreateWithFontDescriptor(descriptor, 14, nil)
+  #expect(CTFontCopyPostScriptName(font) as String == "PlusJakartaSans-SemiBold")
+}
+
+@MainActor private func aboutTitleFont(_ url: URL?) throws -> NSFont {
+  let controller = AboutWindowController(
+    information: AppInformation(infoDictionary: [:]), icon: nil, gitHubMark: nil,
+    titleFontURL: url, open: { _ in }, activate: {})
+  let hosting = try #require(controller.window.contentView as? NSHostingView<AboutView>)
+  return hosting.rootView.titleFont
+}
+
+@MainActor @Test func aboutTitleUsesTheRegisteredWordmarkAtTheOriginalSize() throws {
+  let font = try aboutTitleFont(wordmarkFont)
+  #expect(font.fontName == "PlusJakartaSans-SemiBold")
+  #expect(font.pointSize == NSFont.systemFontSize + 1)
+}
+
+@MainActor @Test func aboutTitleCanRegisterTheSameFontMoreThanOnce() throws {
+  _ = try aboutTitleFont(wordmarkFont)
+  #expect(try aboutTitleFont(wordmarkFont).fontName == "PlusJakartaSans-SemiBold")
+}
+
+@MainActor @Test func aboutTitleFallsBackEvenIfTheFontWasRegisteredEarlier() throws {
+  _ = try aboutTitleFont(wordmarkFont)
+  let font = try aboutTitleFont(nil)
+  #expect(font == NSFont.boldSystemFont(ofSize: NSFont.systemFontSize + 1))
+}
+
+@MainActor @Test func aboutTitleFallsBackForMissingInvalidOrUnexpectedFontFiles() throws {
+  let otherFont = CTFontCreateWithName("Helvetica" as CFString, 14, nil)
+  let otherURL = try #require(CTFontCopyAttribute(otherFont, kCTFontURLAttribute) as? URL)
+  for url in [repositoryRoot.appendingPathComponent("Assets/none.ttf"), gitHubMark, otherURL] {
+    #expect(try aboutTitleFont(url) == NSFont.boldSystemFont(ofSize: NSFont.systemFontSize + 1))
   }
 }

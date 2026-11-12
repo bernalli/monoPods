@@ -2,7 +2,8 @@
 // and the "how it works" figure. Run from the repository root:
 //   swift scripts/make-artwork.swift docs/images
 // The geometry and colours of the icon match scripts/make-icon.swift; the menu bar glyphs match
-// MonoPodsApp.ringsIcon. Text uses the system font (SF Pro).
+// MonoPodsApp.ringsIcon. The MonoPods wordmark uses the bundled Plus Jakarta Sans SemiBold,
+// registered only for this process. All other text uses the system font (SF Pro).
 import AppKit
 import CoreGraphics
 import CoreText
@@ -10,7 +11,31 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-enum RenderFailure: Error { case invalid, output }
+enum RenderFailure: Error { case invalid, output, font }
+let wordmarkPostScriptName = "PlusJakartaSans-SemiBold"
+// render() requires the repository root as the working directory.
+let wordmarkFontURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  .appendingPathComponent("Assets/Fonts/PlusJakartaSans-SemiBold.ttf")
+
+func registerWordmarkFont(at url: URL) throws {
+  guard
+    let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL)
+      as? [CTFontDescriptor],
+    descriptors.count == 1, let descriptor = descriptors.first,
+    CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String
+      == wordmarkPostScriptName,
+    CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+  else { throw RenderFailure.font }
+}
+
+func wordmarkFont(size: CGFloat) throws -> NSFont {
+  guard let font = NSFont(name: wordmarkPostScriptName, size: size),
+    font.fontName == wordmarkPostScriptName,
+    let source = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL,
+    source.resolvingSymlinksInPath().path == wordmarkFontURL.resolvingSymlinksInPath().path
+  else { throw RenderFailure.font }
+  return font
+}
 let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 func color(_ hex: UInt32, alpha: CGFloat = 1) -> CGColor {
   CGColor(
@@ -143,9 +168,10 @@ struct Text {
   /// The ink of the glyphs relative to the pen position, with y growing upwards from the baseline.
   let glyphBounds: CGRect
   init(
-    _ string: String, size: CGFloat, weight: NSFont.Weight, ink: CGColor, kern: CGFloat = 0
+    _ string: String, size: CGFloat, weight: NSFont.Weight, ink: CGColor, kern: CGFloat = 0,
+    font: NSFont? = nil
   ) {
-    let font = NSFont.systemFont(ofSize: size, weight: weight)
+    let font = font ?? NSFont.systemFont(ofSize: size, weight: weight)
     let attributes: [NSAttributedString.Key: Any] = [
       .font: font,
       NSAttributedString.Key(kCTForegroundColorAttributeName as String): ink,
@@ -192,7 +218,9 @@ func socialPreview() throws -> CGImage {
   let height: CGFloat = 640
   let ctx = try canvas(width: Int(width), height: Int(height))
   background(ctx, width: width, height: height)
-  let title = Text("MonoPods", size: 128, weight: .bold, ink: color(Palette.mono), kern: -2.5)
+  let title = Text(
+    "MonoPods", size: 128, weight: .semibold, ink: color(Palette.mono), kern: -2.5,
+    font: try wordmarkFont(size: 128))
   iconAndTitle(ctx, width: width, height: height, side: 330, gap: 64, title: title)
   guard let image = ctx.makeImage() else { throw RenderFailure.invalid }
   return image
@@ -210,7 +238,9 @@ func banner() throws -> CGImage {
   ctx.strokeEllipse(in: circle(width - 70, height / 2, 250))
   ctx.strokeEllipse(in: circle(width + 60, height / 2, 250))
   ctx.restoreGState()
-  let title = Text("MonoPods", size: 112, weight: .bold, ink: color(Palette.mono), kern: -2.2)
+  let title = Text(
+    "MonoPods", size: 112, weight: .semibold, ink: color(Palette.mono), kern: -2.2,
+    font: try wordmarkFont(size: 112))
   iconAndTitle(ctx, width: width, height: height, side: 250, gap: 60, title: title)
   guard let image = ctx.makeImage() else { throw RenderFailure.invalid }
   return image
@@ -424,6 +454,7 @@ func render() throws {
     (try? docs.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true,
     (try? out.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true
   else { throw RenderFailure.output }
+  try registerWordmarkFont(at: wordmarkFontURL)
   try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
   try png(socialPreview(), at: out.appendingPathComponent("social-preview.png"))
   try png(banner(), at: out.appendingPathComponent("banner.png"))
