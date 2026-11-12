@@ -25,8 +25,8 @@ Click the MonoPods icon at the top right of your screen to open its menu. It sta
 Choose Check for Updates… to check for a new version. MonoPods never checks automatically and downloads an update only when you choose to install it.
 
 - Before downloading, MonoPods must return the sound to stereo or confirm that there is nothing to restore. From that confirmation until the new version runs, automatic switching is paused.
-- If MonoPods cannot confirm this in time, it does not install the update and keeps working. Quit and reopen MonoPods before you check again.
-- After a crash, MonoPods finishes its crash recovery before it allows updates. During installation, other launches of MonoPods stay inactive until the new version is complete and verified.
+- If MonoPods cannot confirm this, it does not install the update and keeps working. Quit and reopen MonoPods before you check again.
+- After a crash, MonoPods recovers its saved audio state before it allows updates. During installation, other launches of MonoPods stay inactive until the new version is complete and verified.
 - macOS may ask again for Bluetooth access after an update, because each version has a new ad hoc signature. If it asks, allow it to keep automatic switching working.
 
 Checks fetch the [update list](https://github.com/bernalli/monoPods/releases/latest/download/appcast.xml) from GitHub; updates fetch the disk image from the same release. GitHub receives your IP address and the app version. [Sparkle](https://sparkle-project.org) installs an update only when its EdDSA signature is valid for the key in the installed app.
@@ -45,7 +45,7 @@ Checks fetch the [update list](https://github.com/bernalli/monoPods/releases/lat
 - After a crash, mono may stay on until you reopen MonoPods.
 - Tested only with AirPods Pro 2 on macOS 27.2.
 - Report an Issue… opens GitHub’s new-issue page in your browser. MonoPods sends nothing by itself.
-- Apart from update checks, MonoPods makes no network requests. It reads the local system log.
+- Apart from update checks and downloads, MonoPods makes no network requests. It reads the local system log.
 
 See [technical notes and building from source](docs/TECHNICAL.md).
 

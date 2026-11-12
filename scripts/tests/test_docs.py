@@ -14,7 +14,7 @@ BLUETOOTH_ASKED = ('- macOS may ask again for Bluetooth access after an update, 
                    'version has a new ad hoc signature. If it asks, allow it to keep automatic '
                    'switching working.')
 BLUETOOTH_KEPT = '- Updates keep the Bluetooth access you already granted.'
-NETWORK_LINE = ('- Apart from update checks, MonoPods makes no network requests. '
+NETWORK_LINE = ('- Apart from update checks and downloads, MonoPods makes no network requests. '
                 'It reads the local system log.')
 README_TITLES = ['Install', 'Updates', 'Requirements', 'Good to know', 'License']
 README_UPDATES = [
@@ -23,9 +23,9 @@ README_UPDATES = [
     '- Before downloading, MonoPods must return the sound to stereo or confirm that there is '
     'nothing to restore. From that confirmation until the new version runs, automatic switching '
     'is paused.',
-    '- If MonoPods cannot confirm this in time, it does not install the update and keeps '
+    '- If MonoPods cannot confirm this, it does not install the update and keeps '
     'working. Quit and reopen MonoPods before you check again.',
-    '- After a crash, MonoPods finishes its crash recovery before it allows updates. During '
+    '- After a crash, MonoPods recovers its saved audio state before it allows updates. During '
     'installation, other launches of MonoPods stay inactive until the new version is complete '
     'and verified.',
 ]
