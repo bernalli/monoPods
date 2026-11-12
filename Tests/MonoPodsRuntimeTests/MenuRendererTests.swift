@@ -182,11 +182,15 @@ func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
   #expect(menu.items[2].isEnabled)
   #expect(menu.items[3].keyEquivalent == "q")
   #expect(menu.items[3].keyEquivalentModifierMask == .command)
-  // Items hold their target weakly; the renderer must outlive the actions it receives.
+  // Items hold their target weakly; the renderer must outlive the actions it receives. The action
+  // is sent to the item's own target: NSMenu.performActionForItem(at:) can drop it in a test
+  // process without a running application.
   withExtendedLifetime(renderer) {
-    menu.performActionForItem(at: 0)
-    menu.performActionForItem(at: 2)
-    menu.performActionForItem(at: 3)
+    for index in [0, 2, 3] {
+      let item = menu.items[index]
+      #expect(item.target === renderer)
+      _ = (item.target as? NSObject)?.perform(item.action, with: item)
+    }
   }
   #expect(performed == [.launchAtLogin, .reportIssue, .quit])
 }
@@ -256,7 +260,10 @@ func aRowThatChangesKindGetsANewItem(style: InfoRowStyle) throws {
   #expect(again !== info)
   #expect(again.isEnabled)
   #expect(again.view == nil)
-  withExtendedLifetime(renderer) { menu.performActionForItem(at: 0) }
+  withExtendedLifetime(renderer) {
+    #expect(again.target === renderer)
+    _ = (again.target as? NSObject)?.perform(again.action, with: again)
+  }
   #expect(performed == [.resume])
 }
 
