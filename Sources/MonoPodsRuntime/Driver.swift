@@ -146,12 +146,15 @@ public enum RouteIdentity {
         address: address ?? "", connection: boundary?.raw, readTime: now.utc.raw, complete: complete
       ))
     var selected: Observation?
-    if case .known(_, let time) = result,
-      let record = capture.records.last(where: {
-        $0.timestamp == time && observation($0, provenance: .history) != nil
-      })
-    {
-      selected = observation(record, provenance: .history)
+    if case .known(_, let time) = result {
+      // A transition can share the source time of the selected state: only a count answers.
+      for record in capture.records.reversed() where record.timestamp == time {
+        guard let candidate = observation(record, provenance: .history),
+          case .count = candidate.value
+        else { continue }
+        selected = candidate
+        break
+      }
     }
     // Context is the query's original context; a late response cannot acquire a new epoch.
     if selected?.context != context { selected = nil }

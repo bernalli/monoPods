@@ -210,3 +210,23 @@ func s1(
     #expect(EarLine.parse(record: record(beat, bad)) == .gap, "\(bad)")
   }
 }
+
+@Test func historyConflictsDependOnSourceTimeInsteadOfDeliveryOrder() {
+  let context = HistoryContext(
+    address: address, connection: "2001-01-01T00:00:00Z",
+    readTime: "2001-01-01T00:00:10Z", complete: true)
+  let first = s1(time: "2001-01-01T00:00:01Z")
+  let conflicting = s1("out of ear", time: first.timestamp)
+  let fresh = s1(time: "2001-01-01T00:00:02Z")
+  let expected = HistorySnapshot.select(records: [fresh], context: context)
+  for rows in [
+    [first, conflicting, fresh], [first, fresh, conflicting],
+    [conflicting, first, fresh], [conflicting, fresh, first],
+    [fresh, first, conflicting], [fresh, conflicting, first],
+  ] {
+    #expect(HistorySnapshot.select(records: rows, context: context) == expected)
+  }
+  for rows in [[first, conflicting], [conflicting, first], [first, conflicting, first]] {
+    #expect(HistorySnapshot.select(records: rows, context: context) == .unknown)
+  }
+}

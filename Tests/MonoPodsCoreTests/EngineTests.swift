@@ -934,3 +934,74 @@ private func monoApplied() throws -> Engine {
     #expect(retries.count == (milliseconds < 1500 ? 1 : 0))
   }
 }
+
+@Test func unreadableFaultWatermarkNeverMovesBackwards() {
+  for order: [UInt64] in [[5, 3], [3, 5], [5, 5, 3]] {
+    var engine = readyEngine()
+    for second in order {
+      _ = engine.handle(
+        input: .gap(epoch: 1, reason: .sourceUnreadable, faultTime: instant(second).utc),
+        at: instant(6))
+    }
+    _ = engine.handle(input: .observation(observation(1, at: 4)), at: instant(6))
+    #expect(engine.snapshot.count == nil)
+    #expect(engine.snapshot.desiredTarget == nil)
+    _ = engine.handle(input: .observation(observation(2, at: 7)), at: instant(7))
+    #expect(engine.snapshot.count == 2)
+    #expect(engine.snapshot.desiredTarget == .stereo)
+  }
+}
+
+@Test func historyFaultBarrierSurvivesStreamRestartAndLaterTimedFaults() throws {
+  func queryID(_ actions: [EngineAction]) -> UInt64? {
+    actions.compactMap { if case .queryHistory(let id, _) = $0 { id } else { nil } }.first
+  }
+  func unreadable(_ second: UInt64?, epoch: UInt64 = 1) -> EngineInput {
+    .gap(epoch: epoch, reason: .sourceUnreadable, faultTime: second.map { instant($0).utc })
+  }
+  // A stream restart clears the live watermark only: the history barrier stays at 5 s when the
+  // new stream reports an older fault.
+  var restarted = readyEngine()
+  var next = ObservationContext.test
+  next.streamEpoch = 2
+  _ = restarted.handle(input: unreadable(5), at: instant(6))
+  _ = restarted.handle(input: .streamStarted(epoch: 2, nonce: "next"), at: instant(6))
+  let stale = try #require(
+    queryID(restarted.handle(input: unreadable(3, epoch: 2), at: instant(7))))
+  _ = restarted.handle(
+    input: .history(
+      query: stale, context: next,
+      observation: observation(1, at: 4, provenance: .history, context: next), complete: true),
+    at: instant(7))
+  #expect(restarted.snapshot.count == nil)
+  let fresh = try #require(
+    queryID(restarted.handle(input: unreadable(3, epoch: 2), at: instant(7))))
+  _ = restarted.handle(
+    input: .history(
+      query: fresh, context: next,
+      observation: observation(1, at: 6, provenance: .history, context: next), complete: true),
+    at: instant(7))
+  #expect(restarted.snapshot.count == 1)
+  // A fault with a known time does not clear an earlier fault whose time is unknown.
+  var unknown = readyEngine()
+  _ = unknown.handle(input: unreadable(nil), at: instant(2))
+  let query = try #require(queryID(unknown.handle(input: unreadable(3), at: instant(3))))
+  _ = unknown.handle(
+    input: .history(
+      query: query, context: .test, observation: observation(1, at: 4, provenance: .history),
+      complete: true),
+    at: instant(5))
+  #expect(unknown.snapshot.count == nil)
+  _ = unknown.handle(input: .observation(observation(2, at: 5)), at: instant(5))
+  #expect(unknown.snapshot.count == 2)
+}
+
+@Test func unreadableFaultStampedInTheFutureIsBoundedByItsArrival() {
+  var engine = readyEngine()
+  _ = engine.handle(
+    input: .gap(epoch: 1, reason: .sourceUnreadable, faultTime: instant(600).utc), at: instant(2))
+  _ = engine.handle(input: .observation(observation(1, at: 2)), at: instant(2))
+  #expect(engine.snapshot.count == nil)
+  _ = engine.handle(input: .observation(observation(1, at: 3)), at: instant(3))
+  #expect(engine.snapshot.count == 1)
+}

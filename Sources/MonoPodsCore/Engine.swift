@@ -574,15 +574,20 @@ public struct Engine: Sendable {
       guard epoch == streamEpoch else { break }
       invalidate()
       resetPlayback(at: now.utc)
-      if reason == .sourceUnreadable || reason == .clockChanged {
+      if reason == .clockChanged {
         faultTime = time
         faultTimeUnknown = time == nil
-      }
-      if reason == .clockChanged {
         lastStateTime = nil
       }
       if reason == .sourceUnreadable {
-        unreadableAt = time
+        // A fault is never later than the instant that reports it. Without this bound a row
+        // stamped in the future would hold the monotonic watermark until the clock passes it.
+        if let time = time.map({ min($0, now.utc) }) {
+          if faultTime.map({ time > $0 }) ?? true { faultTime = time }
+          if unreadableAt.map({ time > $0 }) ?? true { unreadableAt = time }
+        } else {
+          faultTimeUnknown = true
+        }
         query(actions: &actions)
       } else {
         failStream(at: now, actions: &actions)

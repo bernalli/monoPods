@@ -34,6 +34,7 @@ public enum HistorySnapshot {
     let fault = context.faultTime.flatMap { try? SourceTime($0) }
     if context.faultTime != nil && fault == nil { return .unknown }
     var latest: (EarState, SourceTime)?
+    var latestConflicted = false
     var latestUnreadable = fault
     for record in records {
       guard let time = try? SourceTime(record.timestamp) else { return .incomplete }
@@ -44,13 +45,14 @@ public enum HistorySnapshot {
       case .state(let state) where state.address == context.address:
         if latest == nil || time > latest!.1 {
           latest = (state, time)
+          latestConflicted = false
         } else if time == latest!.1 && state != latest!.0 {
-          return .unknown
+          latestConflicted = true
         }
       default: break
       }
     }
-    guard let (state, time) = latest, state.count != nil || state.detectionOff,
+    guard !latestConflicted, let (state, time) = latest, state.count != nil || state.detectionOff,
       latestUnreadable == nil || time > latestUnreadable!
     else {
       return .unknown

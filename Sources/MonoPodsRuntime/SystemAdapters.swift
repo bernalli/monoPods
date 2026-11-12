@@ -41,6 +41,78 @@ public enum SystemClock {
   }
 }
 
+struct ObservedSystemRoute {
+  let identity: String?
+  let name: String?
+  let productID: Any?
+  let device: IOBluetoothDevice?
+}
+
+@MainActor struct RouteObservationAccess {
+  var add: (@escaping AudioObjectPropertyListenerBlock) -> Bool
+  var remove: (@escaping AudioObjectPropertyListenerBlock) -> Void
+  var read: () -> ObservedSystemRoute?
+
+  static var live: Self {
+    Self(
+      add: { block in
+        var property = outputProperty
+        return AudioObjectAddPropertyListenerBlock(
+          AudioObjectID(kAudioObjectSystemObject), &property, .main, block) == noErr
+      },
+      remove: { block in
+        var property = outputProperty
+        AudioObjectRemovePropertyListenerBlock(
+          AudioObjectID(kAudioObjectSystemObject), &property, .main, block)
+      }, read: readSystemRoute)
+  }
+  private static var outputProperty: AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+  }
+  private static func readSystemRoute() -> ObservedSystemRoute? {
+    var deviceID: AudioDeviceID = 0
+    var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+    var property = AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+    guard
+      AudioObjectGetPropertyData(
+        AudioObjectID(kAudioObjectSystemObject), &property, 0, nil, &size, &deviceID) == noErr
+    else {
+      return nil
+    }
+    var reference: Unmanaged<CFString>?
+    size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    property.mSelector = kAudioDevicePropertyDeviceUID
+    guard AudioObjectGetPropertyData(deviceID, &property, 0, nil, &size, &reference) == noErr,
+      let reference
+    else {
+      return nil
+    }
+    let uid = reference.takeRetainedValue()
+    property.mSelector = kAudioDevicePropertyTransportType
+    var transport: UInt32 = 0
+    size = UInt32(MemoryLayout<UInt32>.size)
+    guard AudioObjectGetPropertyData(deviceID, &property, 0, nil, &size, &transport) == noErr,
+      let candidate = RouteIdentity.uidAddress(uid as String),
+      let device = IOBluetoothDevice(
+        addressString: candidate.replacingOccurrences(of: ":", with: "-"))
+    else {
+      return nil
+    }
+    let selector = NSSelectorFromString("productID")
+    let product = device.responds(to: selector) ? device.value(forKey: "productID") : nil
+    let identity = RouteIdentity.resolve(
+      uid: uid as String, address: device.addressString, connected: device.isConnected(),
+      paired: device.isPaired(),
+      bluetoothTransport: transport == kAudioDeviceTransportTypeBluetooth, productID: product)
+    return ObservedSystemRoute(
+      identity: identity, name: device.name, productID: product, device: device)
+  }
+}
+
 @MainActor public final class SystemObservations: NSObject, @preconcurrency CBCentralManagerDelegate
 {
   private let driver: ObservationDriver
@@ -51,6 +123,8 @@ public enum SystemClock {
   private var disconnectToken: IOBluetoothUserNotification?
   private var tokens: [NSObjectProtocol] = []
   private var listener: AudioObjectPropertyListenerBlock?
+  private let routeAccess: RouteObservationAccess
+  private var routeListenerReady = false
   private var awake = true
   public private(set) var routeName: String?
   public private(set) var routeModel: AirPodsModel?
@@ -62,6 +136,16 @@ public enum SystemClock {
     self.driver = driver
     self.submit = submit
     self.requestQuit = requestQuit
+    self.routeAccess = .live
+  }
+  init(
+    driver: ObservationDriver, routeAccess: RouteObservationAccess,
+    submit: @escaping (EngineInput) -> Void
+  ) {
+    self.driver = driver
+    self.submit = submit
+    self.requestQuit = {}
+    self.routeAccess = routeAccess
   }
   public func start() {
     central = CBCentralManager(
@@ -89,18 +173,15 @@ public enum SystemClock {
       center.addObserver(
         forName: NSWorkspace.willPowerOffNotification,
         object: nil, queue: .main, using: powerOff))
+    startRouteObservation()
+  }
+  func startRouteObservation() {
+    guard listener == nil else { return }
     let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
       Task { @MainActor in self?.refreshRoute() }
     }
     listener = block
-    var property = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-      mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
-    if AudioObjectAddPropertyListenerBlock(
-      AudioObjectID(kAudioObjectSystemObject), &property, .main, block) != noErr
-    {
-      driver.route(address: nil)
-    }
+    routeListenerReady = routeAccess.add(block)
     refreshRoute()
   }
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
@@ -122,51 +203,21 @@ public enum SystemClock {
     _ notification: IOBluetoothUserNotification, device: IOBluetoothDevice
   ) { refreshRoute() }
   public func refreshRoute() {
-    var deviceID: AudioDeviceID = 0
-    var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-    var property = AudioObjectPropertyAddress(
-      mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-      mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
-    guard
-      AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &property, 0, nil, &size, &deviceID) == noErr
-    else {
+    guard routeListenerReady else {
       clearRoute()
       return
     }
-    var reference: Unmanaged<CFString>?
-    size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-    property.mSelector = kAudioDevicePropertyDeviceUID
-    guard AudioObjectGetPropertyData(deviceID, &property, 0, nil, &size, &reference) == noErr,
-      let reference
-    else {
+    guard let route = routeAccess.read() else {
       clearRoute()
       return
     }
-    let uid = reference.takeRetainedValue()
-    property.mSelector = kAudioDevicePropertyTransportType
-    var transport: UInt32 = 0
-    size = UInt32(MemoryLayout<UInt32>.size)
-    guard AudioObjectGetPropertyData(deviceID, &property, 0, nil, &size, &transport) == noErr,
-      let candidate = RouteIdentity.uidAddress(uid as String),
-      let device = IOBluetoothDevice(
-        addressString: candidate.replacingOccurrences(of: ":", with: "-"))
-    else {
-      clearRoute()
-      return
-    }
-    let selector = NSSelectorFromString("productID")
-    let product = device.responds(to: selector) ? device.value(forKey: "productID") : nil
-    let identity = RouteIdentity.resolve(
-      uid: uid as String, address: device.addressString, connected: device.isConnected(),
-      paired: device.isPaired(),
-      bluetoothTransport: transport == kAudioDeviceTransportTypeBluetooth, productID: product)
-    updateRoute(identity: identity, name: device.name, productID: product)
+    let identity = route.identity
+    updateRoute(identity: identity, name: route.name, productID: route.productID)
     disconnectToken?.unregister()
     disconnectToken =
       identity == nil
       ? nil
-      : device.register(
+      : route.device?.register(
         forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
   }
   // Display only: the caller resolves identity without looking at the model.
@@ -182,6 +233,9 @@ public enum SystemClock {
     heartbeat.notice("HEARTBEAT \(nonce, privacy: .public) \(sequence, privacy: .public)")
   }
   public func stop() {
+    let wasReady = routeListenerReady
+    routeListenerReady = false
+    clearRoute()
     central = nil
     connectionToken?.unregister()
     connectionToken = nil
@@ -190,13 +244,7 @@ public enum SystemClock {
     let center = NSWorkspace.shared.notificationCenter
     for token in tokens { center.removeObserver(token) }
     tokens.removeAll()
-    if let listener {
-      var property = AudioObjectPropertyAddress(
-        mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-        mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
-      AudioObjectRemovePropertyListenerBlock(
-        AudioObjectID(kAudioObjectSystemObject), &property, .main, listener)
-    }
+    if wasReady, let listener { routeAccess.remove(listener) }
     listener = nil
   }
 }

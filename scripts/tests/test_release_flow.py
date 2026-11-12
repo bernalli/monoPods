@@ -775,15 +775,25 @@ class ReleaseScriptTests(FlowFixture):
 
 class ReleaseDocumentTests(unittest.TestCase):
     def test_check_parses_every_shell_script(self):
-        line = next(
-            line
-            for line in (SCRIPTS / "check.sh").read_text().splitlines()
-            if line.startswith("bash -n ")
-        )
-        checked = set(line.split()[2:])
-        self.assertEqual(
-            checked, {f"scripts/{path.name}" for path in SCRIPTS.glob("*.sh")}
-        )
+        block = 'for script in scripts/*.sh; do\n  bash -n "$script"\ndone'
+        text = (SCRIPTS / "check.sh").read_text()
+        self.assertIn(block, text)
+        names = sorted(path.name for path in SCRIPTS.glob("*.sh"))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            for name in names:
+                (scripts / name).write_text("#!/bin/bash\ntrue\n")
+            for name in names:
+                path = scripts / name
+                path.write_text("#!/bin/bash\nif\n")
+                result = subprocess.run(
+                    ["/bin/bash", "-c", "set -e\n" + block],
+                    cwd=root, capture_output=True, text=True, timeout=10,
+                )
+                self.assertNotEqual(result.returncode, 0, name)
+                path.write_text("#!/bin/bash\ntrue\n")
 
     def test_releasing_guide_lists_the_steps_and_the_signing_mode(self):
         text = (SCRIPTS.parent / "docs/RELEASING.md").read_text()
