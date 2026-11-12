@@ -184,11 +184,14 @@ func envelopeFixture() throws -> [Data] {
 
 @MainActor @Test func childThatExitsBeforeTheDeadlineKeepsItsStatus() async {
   let process = LogProcess()
+  // An early exit keeps its status only while scheduling delays stay below the deadline: delays
+  // can time out an earlier exit on the safe side. A loaded CI runner delayed this check by more
+  // than 30 s, so the deadline is far beyond any scheduling delay.
   let startFailed = Int32.min
   let code: Int32 = await withCheckedContinuation { continuation in
     do {
       try process.start(
-        executable: "/usr/bin/false", arguments: [], timeoutSeconds: 30,
+        executable: "/usr/bin/false", arguments: [], timeoutSeconds: 3600,
         chunk: { _ in }, finished: { continuation.resume(returning: $0) })
     } catch {
       continuation.resume(returning: startFailed)
