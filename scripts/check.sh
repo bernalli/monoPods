@@ -11,5 +11,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -v 2>&1 
 swift-format lint --strict --recursive Package.swift Sources Tests 2>&1 | tee "$monopods_logs/format.log"
 swiftlint lint --strict --no-cache 2>&1 | tee "$monopods_logs/lint.log"
 plutil -lint Resources/Info.plist
-bash -n scripts/check.sh scripts/bundle.sh scripts/dmg.sh scripts/release.sh scripts/sparkle-tools.sh
+for script in scripts/*.sh; do
+  bash -n "$script"
+done
 printf 'Checks passed: %s tests; logs: %s\n' "$count" "$monopods_logs"
