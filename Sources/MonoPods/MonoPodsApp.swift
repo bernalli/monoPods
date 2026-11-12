@@ -1,56 +1,39 @@
 import AppKit
 import MonoPodsCore
 import MonoPodsRuntime
-import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
-  var host: RuntimeHost?
+  let host: RuntimeHost
+  init(host: RuntimeHost) {
+    self.host = host
+  }
+  /// The app has no windows to reopen: the host handles the event and AppKit adds nothing.
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool
   {
-    host?.reopen()
-    return true
+    ApplicationReopen.handle { host.reopen() }
   }
+  func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
+  func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     // The source build waiting for its replacement refuses Sparkle's Quit, not the session's.
-    if host?.waitingForUpdate == true {
+    if host.waitingForUpdate {
       let reason = NSAppleEventManager.shared().currentAppleEvent?
         .attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason))?.enumCodeValue
       return WaitingTermination.reply(quitReason: reason) == .now ? .terminateNow : .terminateCancel
     }
-    host?.requestQuit(reason: .logout)
+    host.requestQuit(reason: .logout)
     return .terminateLater
   }
 }
 
-@MainActor struct MonoPodsApp: App {
-  @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-  private let host: RuntimeHost
-  /// The menu bar item lives as long as the app; it also keeps the updater alive.
-  private static var statusMenu: StatusMenuController?
-  init() {
-    let model = RuntimeHost()
-    let updates = UpdateController(host: model)
-    model.onUpdatesAllowed = { updates.start() }
-    model.start()
-    host = model
-    if Self.statusMenu == nil {
-      Self.statusMenu = StatusMenuController(host: model, updates: updates)
-    }
-  }
-  /// The menu bar item is AppKit (see `StatusMenuController`); SwiftUI keeps only the app
-  /// commands. An accessory app never shows the empty Settings scene.
-  var body: some Scene {
-    Settings { EmptyView() }
-      .commands {
-        CommandGroup(replacing: .appTermination) {
-          Button("Quit MonoPods") { host.quit() }.keyboardShortcut("q")
-        }
-      }
-      .withDelegate(host: host, delegate: delegate)
-  }
+/// The objects that live as long as the app. `NSApplication.delegate` is weak, and the status
+/// menu keeps the updater alive.
+@MainActor private enum Application {
+  static var delegate: AppDelegate?
+  static var statusMenu: StatusMenuController?
 }
 
-// Install the delegate and start once before entering the SwiftUI scene loop.
+// The app is AppKit only: the status item is the UI, and there is no SwiftUI scene.
 @main enum Entry {
   @MainActor static func main() async {
     let args = CommandLine.arguments
@@ -78,16 +61,16 @@ import SwiftUI
       channel.send(args[2])
       exit(0)
     }
-    MonoPodsApp.main()
-  }
-}
-
-extension Scene {
-  @MainActor func withDelegate(host: RuntimeHost, delegate: AppDelegate) -> some Scene {
-    // The host starts before any ordinary window exists, and the scene has no app onAppear.
-    if delegate.host == nil {
-      delegate.host = host
-    }
-    return self
+    let host = RuntimeHost()
+    let updates = UpdateController(host: host)
+    host.onUpdatesAllowed = { updates.start() }
+    host.start()
+    Application.statusMenu = StatusMenuController(host: host, updates: updates)
+    let delegate = AppDelegate(host: host)
+    Application.delegate = delegate
+    let application = NSApplication.shared
+    application.delegate = delegate
+    application.mainMenu = ApplicationMenu.make { host.quit() }
+    application.run()
   }
 }
