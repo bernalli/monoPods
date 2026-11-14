@@ -1,4 +1,5 @@
 "%@ (Exit %@)" = "%@（退出代码 %@）";
+"%@ can check for new versions once a day. You can change this at any time in Options." = "%@ 每天可以检查一次新版本。你可以随时在“选项”中更改此设置。";
 "About %@" = "关于 %@";
 "Accessibility Mono Audio: %@" = "单声道音频（辅助功能）：%@";
 "AirPods Max Not Supported" = "不支持 AirPods Max";
@@ -12,12 +13,15 @@
 "Automatic Ear Detection Off" = "自动入耳检测已关闭";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "自动入耳检测已关闭。请在蓝牙设置中将其打开以使用 MonoPods。";
 "Automatic Ear Detection: %@" = "自动入耳检测：%@";
+"Automatic Updates" = "自动更新";
 "Automatic restart is not active until the next login." = "自动重启要到下次登录后才会生效。";
 "Automatic switching is blocked; recovery evidence needs review." = "自动切换已被阻止；需要检查恢复数据。";
 "Automation Blocked" = "自动化已阻止";
 "Automation blocked; recovery evidence needs review" = "自动化已阻止；需要检查恢复数据";
 "Buy Me a Coffee" = "请我喝杯咖啡";
 "Cancel" = "取消";
+"Check Automatically" = "自动检查";
+"Check for Updates Automatically?" = "要自动检查更新吗？";
 "Check for Updates…" = "检查更新…";
 "Command order cannot be established. Automation and recovery are blocked." = "无法确定命令顺序。自动化和恢复已被阻止。";
 "Configuration, manifest or runtime evidence is invalid. Automation is blocked." = "配置、清单或运行时数据无效。自动化已被阻止。";
@@ -25,6 +29,7 @@
 "Current Audio: %@ (OSStatus %@)" = "当前音频：%@（OSStatus %@）";
 "Details" = "详细信息";
 "Diagnostic persistence failed" = "无法保存诊断数据";
+"Don't Check" = "不检查";
 "Ear Detection Unavailable" = "入耳检测不可用";
 "Hide Menu Bar Icon" = "隐藏菜单栏图标";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "如果不再使用 MonoPods，请在蓝牙设置中关闭自动入耳检测。";

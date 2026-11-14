@@ -1,4 +1,5 @@
 "%@ (Exit %@)" = "%@ (Exit %@)";
+"%@ can check for new versions once a day. You can change this at any time in Options." = "%@ can check for new versions once a day. You can change this at any time in Options.";
 "About %@" = "About %@";
 "Accessibility Mono Audio: %@" = "Accessibility Mono Audio: %@";
 "AirPods Max Not Supported" = "AirPods Max Not Supported";
@@ -12,12 +13,15 @@
 "Automatic Ear Detection Off" = "Automatic Ear Detection Off";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.";
 "Automatic Ear Detection: %@" = "Automatic Ear Detection: %@";
+"Automatic Updates" = "Automatic Updates";
 "Automatic restart is not active until the next login." = "Automatic restart is not active until the next login.";
 "Automatic switching is blocked; recovery evidence needs review." = "Automatic switching is blocked; recovery evidence needs review.";
 "Automation Blocked" = "Automation Blocked";
 "Automation blocked; recovery evidence needs review" = "Automation blocked; recovery evidence needs review";
 "Buy Me a Coffee" = "Buy Me a Coffee";
 "Cancel" = "Cancel";
+"Check Automatically" = "Check Automatically";
+"Check for Updates Automatically?" = "Check for Updates Automatically?";
 "Check for Updates…" = "Check for Updates…";
 "Command order cannot be established. Automation and recovery are blocked." = "Command order cannot be established. Automation and recovery are blocked.";
 "Configuration, manifest or runtime evidence is invalid. Automation is blocked." = "Configuration, manifest or runtime evidence is invalid. Automation is blocked.";
@@ -25,6 +29,7 @@
 "Current Audio: %@ (OSStatus %@)" = "Current Audio: %@ (OSStatus %@)";
 "Details" = "Details";
 "Diagnostic persistence failed" = "Diagnostic persistence failed";
+"Don't Check" = "Don't Check";
 "Ear Detection Unavailable" = "Ear Detection Unavailable";
 "Hide Menu Bar Icon" = "Hide Menu Bar Icon";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.";

@@ -99,6 +99,7 @@ import MonoPodsRuntime
     switch command {
     case .launchAtLogin: host.setLaunchAtLogin(!host.launchAtLogin)
     case .hideMenuBarIcon: host.setMenuVisible(!host.menuVisible)
+    case .automaticUpdates: updates.setAutomaticChecks(!updates.state.automaticChecks)
     case .checkForUpdates: updates.checkForUpdates()
     case .about: about.show()
     case .resume: confirmResume()

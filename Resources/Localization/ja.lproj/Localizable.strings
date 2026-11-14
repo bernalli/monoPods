@@ -1,4 +1,5 @@
 "%@ (Exit %@)" = "%@（終了コード %@）";
+"%@ can check for new versions once a day. You can change this at any time in Options." = "%@は1日に1回、新しいバージョンを確認できます。この設定は“オプション”でいつでも変更できます。";
 "About %@" = "%@について";
 "Accessibility Mono Audio: %@" = "モノラルオーディオ（アクセシビリティ）: %@";
 "AirPods Max Not Supported" = "AirPods Maxには非対応";
@@ -12,12 +13,15 @@
 "Automatic Ear Detection Off" = "自動耳検出がオフ";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "自動耳検出がオフになっています。MonoPodsを使うにはBluetooth設定でオンにしてください。";
 "Automatic Ear Detection: %@" = "自動耳検出: %@";
+"Automatic Updates" = "自動アップデート";
 "Automatic restart is not active until the next login." = "自動再起動は次回のログインまで有効になりません。";
 "Automatic switching is blocked; recovery evidence needs review." = "自動切り替えはブロックされています。復旧データの確認が必要です。";
 "Automation Blocked" = "自動化はブロック中";
 "Automation blocked; recovery evidence needs review" = "自動化はブロック中。復旧データの確認が必要です";
 "Buy Me a Coffee" = "コーヒーをおごる";
 "Cancel" = "キャンセル";
+"Check Automatically" = "自動的に確認";
+"Check for Updates Automatically?" = "アップデートを自動的に確認しますか？";
 "Check for Updates…" = "アップデートを確認…";
 "Command order cannot be established. Automation and recovery are blocked." = "コマンドの順序を確定できません。自動化と復旧はブロックされています。";
 "Configuration, manifest or runtime evidence is invalid. Automation is blocked." = "設定、マニフェスト、または実行時データが無効です。自動化はブロックされています。";
@@ -25,6 +29,7 @@
 "Current Audio: %@ (OSStatus %@)" = "現在のオーディオ: %@（OSStatus %@）";
 "Details" = "詳細";
 "Diagnostic persistence failed" = "診断データの保存に失敗しました";
+"Don't Check" = "確認しない";
 "Ear Detection Unavailable" = "装着検出を利用できません";
 "Hide Menu Bar Icon" = "メニューバーのアイコンを非表示";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "MonoPodsの使用をやめる場合は、Bluetooth設定で自動耳検出をオフにしてください。";

@@ -52,8 +52,7 @@ import Sparkle
       guard let self, let coordinator else { return }
       if state != coordinator.state { state = coordinator.state }
     }
-    // The real question arrives with its own window; this placeholder never replies.
-    coordinator.ask = { _ in }
+    coordinator.ask = { reply in AutomaticUpdateQuestion(appName: "MonoPods", reply: reply).show() }
     self.coordinator = coordinator
     observations = [
       updater.observe(\.canCheckForUpdates) { [weak self] _, _ in
@@ -164,6 +163,11 @@ private enum UpdateRefusal: Error { case notAllowed, preparing }
     } catch { return false }
   }
   func checkForUpdates() { updater?.checkForUpdates() }
+}
+
+extension UpdateController {
+  /// The Automatic Updates switch in the menu.
+  func setAutomaticChecks(_ enabled: Bool) { coordinator?.setAutomaticChecks(enabled) }
 }
 
 extension UpdateController: SPUUpdaterDelegate {

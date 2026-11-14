@@ -1,4 +1,5 @@
 "%@ (Exit %@)" = "%@ (Exit-Code %@)";
+"%@ can check for new versions once a day. You can change this at any time in Options." = "%@ kann einmal täglich nach neuen Versionen suchen. Du kannst dies jederzeit in „Optionen“ ändern.";
 "About %@" = "Über %@";
 "Accessibility Mono Audio: %@" = "Mono-Audio (Bedienungshilfen): %@";
 "AirPods Max Not Supported" = "AirPods Max nicht unterstützt";
@@ -12,12 +13,15 @@
 "Automatic Ear Detection Off" = "Automatische Ohrerkennung aus";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "Die automatische Ohrerkennung ist aus. Aktiviere sie in den Bluetooth-Einstellungen, um MonoPods zu verwenden.";
 "Automatic Ear Detection: %@" = "Automatische Ohrerkennung: %@";
+"Automatic Updates" = "Automatische Updates";
 "Automatic restart is not active until the next login." = "Der automatische Neustart ist erst ab der nächsten Anmeldung aktiv.";
 "Automatic switching is blocked; recovery evidence needs review." = "Das automatische Umschalten ist blockiert; die Wiederherstellungsdaten müssen geprüft werden.";
 "Automation Blocked" = "Automatik blockiert";
 "Automation blocked; recovery evidence needs review" = "Automatik blockiert; die Wiederherstellungsdaten müssen geprüft werden";
 "Buy Me a Coffee" = "Spendier mir einen Kaffee";
 "Cancel" = "Abbrechen";
+"Check Automatically" = "Automatisch suchen";
+"Check for Updates Automatically?" = "Automatisch nach Updates suchen?";
 "Check for Updates…" = "Nach Updates suchen …";
 "Command order cannot be established. Automation and recovery are blocked." = "Die Reihenfolge der Befehle lässt sich nicht feststellen. Automatik und Wiederherstellung sind blockiert.";
 "Configuration, manifest or runtime evidence is invalid. Automation is blocked." = "Konfiguration, Manifest oder Laufzeitdaten sind ungültig. Die Automatik ist blockiert.";
@@ -25,6 +29,7 @@
 "Current Audio: %@ (OSStatus %@)" = "Aktuelles Audio: %@ (OSStatus %@)";
 "Details" = "Details";
 "Diagnostic persistence failed" = "Speichern der Diagnose fehlgeschlagen";
+"Don't Check" = "Nicht suchen";
 "Ear Detection Unavailable" = "Ohrerkennung nicht verfügbar";
 "Hide Menu Bar Icon" = "Symbol in der Menüleiste ausblenden";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "Wenn du MonoPods nicht mehr verwendest, deaktiviere die automatische Ohrerkennung in den Bluetooth-Einstellungen.";

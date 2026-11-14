@@ -4,6 +4,7 @@ import Foundation
 public enum MenuCommand: String, CaseIterable, Sendable {
   case launchAtLogin
   case hideMenuBarIcon
+  case automaticUpdates
   case checkForUpdates
   case about
   case reportIssue
@@ -73,6 +74,7 @@ public enum MenuTitle {
   public static var details: String { Localized.text("Details") }
   public static var options: String { Localized.text("Options") }
   public static var launchAtLogin: String { Localized.text("Launch at Login") }
+  public static var automaticUpdates: String { Localized.text("Automatic Updates") }
   public static var hideIcon: String { Localized.text("Hide Menu Bar Icon") }
   public static var hideIconCaption: String {
     Localized.format("Open %@ again to bring it back.", "MonoPods")
@@ -107,6 +109,12 @@ public enum MenuLayout {
         id: "login", title: MenuTitle.launchAtLogin, symbol: "power",
         kind: .toggle(.launchAtLogin, isOn: state.launchAtLogin)))
     options += info(Localized.text(state.loginCaption), id: "login.caption")
+    if state.updates.showsItems {
+      options.append(
+        MenuRow(
+          id: "automatic", title: MenuTitle.automaticUpdates, symbol: "arrow.triangle.2.circlepath",
+          kind: .toggle(.automaticUpdates, isOn: state.updates.automaticChecks)))
+    }
     options.append(MenuRow(id: "options.separator", title: "", symbol: nil, kind: .separator))
     options.append(
       MenuRow(

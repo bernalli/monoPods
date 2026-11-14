@@ -155,6 +155,32 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   #expect(waiting[resume].title == UpdateText.resume)
 }
 
+@Test func automaticUpdatesIsASwitchBetweenTheLoginCaptionAndTheSeparator() throws {
+  for automaticChecks in [false, true] {
+    let updates = UpdateMenuState(
+      available: true, canCheck: true, automaticChecks: automaticChecks)
+    let options = try #require(
+      submenu(MenuLayout.rows(for: layoutState(updates: updates)), titled: "Options"))
+    let row = try #require(options.firstIndex { $0.id == "automatic" })
+    #expect(
+      options[row]
+        == MenuRow(
+          id: "automatic", title: "Automatic Updates", symbol: "arrow.triangle.2.circlepath",
+          kind: .toggle(.automaticUpdates, isOn: automaticChecks)))
+    #expect(options[row - 1].id.hasPrefix("login.caption."))
+    #expect(options[row + 1].id == "options.separator")
+  }
+}
+
+@Test func automaticUpdatesIsMissingWithoutTheUpdater() throws {
+  let rows = MenuLayout.rows(
+    for: layoutState(updates: UpdateMenuState(available: false, canCheck: false)))
+  let options = try #require(submenu(rows, titled: "Options"))
+  #expect(!options.contains { $0.id == "automatic" })
+  #expect(index(of: .automaticUpdates, in: options) == nil)
+  #expect(MenuCommand.automaticUpdates.link == nil)
+}
+
 @Test func rowIdentitiesAreUniqueAtEveryLevel() {
   func check(_ rows: [MenuRow]) {
     #expect(Set(rows.map(\.id)).count == rows.count)
