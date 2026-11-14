@@ -11,7 +11,7 @@ import Sparkle
   @Published private(set) var state = UpdateMenuState(available: false, canCheck: false)
   private let host: RuntimeHost
   private var updater: SPUUpdater?
-  private var standardDriver: SPUStandardUserDriver?
+  private var updateDriver: AppleStyleUpdateDriver?
   private var gatedDriver: GatedUserDriver?
   private var coordinator: UpdateCoordinator?
   private var installer: UpdateInstaller?
@@ -28,12 +28,12 @@ import Sparkle
       return
     }
     let bundle = Bundle.main
-    let standard = SPUStandardUserDriver(hostBundle: bundle, delegate: nil)
-    let gated = GatedUserDriver(standard: standard, controller: self)
+    let driver = AppleStyleUpdateDriver(hostBundle: bundle)
+    let gated = GatedUserDriver(inner: driver, controller: self)
     let updater = SPUUpdater(
       hostBundle: bundle, applicationBundle: bundle, userDriver: gated, delegate: self)
     self.updater = updater
-    standardDriver = standard
+    updateDriver = driver
     gatedDriver = gated
     let installer = UpdateInstaller(
       sourceBuild: version, sourceManifest: host.manifestBuild, audio: host, store: store,
@@ -212,14 +212,14 @@ extension UpdateController: SPUUpdaterDelegate {
   }
 }
 
-/// Forwards everything to the standard driver and holds only the replies that would arm the
+/// Forwards everything to the inner driver and holds only the replies that would arm the
 /// installer, until the installation gate is armed.
 @MainActor final class GatedUserDriver: NSObject, SPUUserDriver {
-  private let standard: SPUStandardUserDriver
+  private let inner: AppleStyleUpdateDriver
   private weak var controller: UpdateController?
 
-  init(standard: SPUStandardUserDriver, controller: UpdateController) {
-    self.standard = standard
+  init(inner: AppleStyleUpdateDriver, controller: UpdateController) {
+    self.inner = inner
     self.controller = controller
   }
 
@@ -227,18 +227,18 @@ extension UpdateController: SPUUpdaterDelegate {
     _ request: SPUUpdatePermissionRequest,
     reply: @escaping (SUUpdatePermissionResponse) -> Void
   ) {
-    standard.show(request, reply: reply)
+    inner.show(request, reply: reply)
   }
 
   func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
-    standard.showUserInitiatedUpdateCheck(cancellation: cancellation)
+    inner.showUserInitiatedUpdateCheck(cancellation: cancellation)
   }
 
   func showUpdateFound(
     with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
     reply: @escaping (SPUUserUpdateChoice) -> Void
   ) {
-    standard.showUpdateFound(with: appcastItem, state: state) { [weak self] choice in
+    inner.showUpdateFound(with: appcastItem, state: state) { [weak self] choice in
       guard choice == .install, state.stage != .installing, let controller = self?.controller
       else {
         reply(choice)
@@ -251,39 +251,39 @@ extension UpdateController: SPUUpdaterDelegate {
   }
 
   func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
-    standard.showUpdateReleaseNotes(with: downloadData)
+    inner.showUpdateReleaseNotes(with: downloadData)
   }
 
   func showUpdateReleaseNotesFailedToDownloadWithError(_ error: any Error) {
-    standard.showUpdateReleaseNotesFailedToDownloadWithError(error)
+    inner.showUpdateReleaseNotesFailedToDownloadWithError(error)
   }
 
   func showUpdateNotFoundWithError(_ error: any Error, acknowledgement: @escaping () -> Void) {
-    standard.showUpdateNotFoundWithError(error, acknowledgement: acknowledgement)
+    inner.showUpdateNotFoundWithError(error, acknowledgement: acknowledgement)
   }
 
   func showUpdaterError(_ error: any Error, acknowledgement: @escaping () -> Void) {
-    standard.showUpdaterError(error, acknowledgement: acknowledgement)
+    inner.showUpdaterError(error, acknowledgement: acknowledgement)
   }
 
   func showDownloadInitiated(cancellation: @escaping () -> Void) {
-    standard.showDownloadInitiated(cancellation: cancellation)
+    inner.showDownloadInitiated(cancellation: cancellation)
   }
 
   func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
-    standard.showDownloadDidReceiveExpectedContentLength(expectedContentLength)
+    inner.showDownloadDidReceiveExpectedContentLength(expectedContentLength)
   }
 
   func showDownloadDidReceiveData(ofLength length: UInt64) {
-    standard.showDownloadDidReceiveData(ofLength: length)
+    inner.showDownloadDidReceiveData(ofLength: length)
   }
 
   func showDownloadDidStartExtractingUpdate() {
-    standard.showDownloadDidStartExtractingUpdate()
+    inner.showDownloadDidStartExtractingUpdate()
   }
 
   func showExtractionReceivedProgress(_ progress: Double) {
-    standard.showExtractionReceivedProgress(progress)
+    inner.showExtractionReceivedProgress(progress)
   }
 
   /// After the gate is armed the app installs without a second click.
@@ -291,7 +291,7 @@ extension UpdateController: SPUUpdaterDelegate {
     if controller?.installsNow == true {
       reply(.install)
     } else {
-      standard.showReady(toInstallAndRelaunch: reply)
+      inner.showReady(toInstallAndRelaunch: reply)
     }
   }
 
@@ -299,20 +299,20 @@ extension UpdateController: SPUUpdaterDelegate {
     withApplicationTerminated applicationTerminated: Bool,
     retryTerminatingApplication: @escaping () -> Void
   ) {
-    standard.showInstallingUpdate(
+    inner.showInstallingUpdate(
       withApplicationTerminated: applicationTerminated,
       retryTerminatingApplication: retryTerminatingApplication)
   }
 
   func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
-    standard.showUpdateInstalledAndRelaunched(relaunched, acknowledgement: acknowledgement)
+    inner.showUpdateInstalledAndRelaunched(relaunched, acknowledgement: acknowledgement)
   }
 
   func showUpdateInFocus() {
-    standard.showUpdateInFocus()
+    inner.showUpdateInFocus()
   }
 
   func dismissUpdateInstallation() {
-    standard.dismissUpdateInstallation()
+    inner.dismissUpdateInstallation()
   }
 }

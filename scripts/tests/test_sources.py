@@ -110,6 +110,20 @@ class UpdateWiringTests(unittest.TestCase):
                 self.assertIn('kCFPreferencesCurrentUser, kCFPreferencesAnyHost', text)
                 self.assertIn('SparklePort(updater: updater, preferencesDomain: bundle.bundleIdentifier)', text)
 
+    def test_the_update_driver_is_the_apple_style_driver(self):
+        text = (ROOT / 'Sources/MonoPods/UpdateController.swift').read_text()
+        self.assertNotIn('SPUStandardUserDriver', text)
+        self.assertEqual(text.count('AppleStyleUpdateDriver(hostBundle:'), 1)
+        body = text[text.index('func showUpdateFound(') :]
+        body = body[: body.index('\n  }\n')]
+        self.assertLess(body.index('controller.authorizeInstall('),
+                        body.index('reply(authorized ? .install : .dismiss)'))
+
+    def test_the_update_driver_imports_only_appkit_foundation_and_sparkle(self):
+        text = (ROOT / 'Sources/MonoPods/AppleStyleUpdateDriver.swift').read_text()
+        imports = re.findall(r'^\s*(?:@\w+\s+)*import\s+(.+?)\s*$', text, re.M)
+        self.assertEqual(sorted(set(imports)), ['AppKit', 'Foundation', 'Sparkle'])
+
 
 class UpdateContractTests(unittest.TestCase):
     def test_update_events_have_closed_payloads_and_positive_uint64_ids(self):

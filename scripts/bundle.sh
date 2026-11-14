@@ -58,7 +58,7 @@ for relative in ['Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/MenuBa
 # Only the closed set of language folders and tables, all regular files, none a link.
 localization = root / 'Resources/Localization'
 languages = ['en', 'it', 'es', 'fr', 'de', 'pt-BR', 'ja', 'zh-Hans']
-tables = ['Localizable.strings', 'InfoPlist.strings']
+tables = ['Localizable.strings', 'InfoPlist.strings', 'AppleStyleUpdateDriver.strings']
 if localization.is_symlink() or not localization.is_dir():
     raise SystemExit('Unsafe localization')
 if sorted(entry.name for entry in localization.iterdir()) != sorted(name + '.lproj' for name in languages):

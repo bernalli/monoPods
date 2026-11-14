@@ -1,0 +1,13 @@
+"%1$@ %2$@ is available (you have %3$@)." = "%1$@ %2$@ is available (you have %3$@).";
+"%@ is ready to install." = "%@ is ready to install.";
+"%@ is up to date." = "%@ is up to date.";
+"Cancel" = "Cancel";
+"Checking for Updates…" = "Checking for Updates…";
+"Downloading Update…" = "Downloading Update…";
+"Install and Relaunch" = "Install and Relaunch";
+"Installing Update…" = "Installing Update…";
+"Later" = "Later";
+"More Info…" = "More Info…";
+"OK" = "OK";
+"Preparing Update…" = "Preparing Update…";
+"The update could not be completed." = "The update could not be completed.";

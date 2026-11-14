@@ -30,7 +30,8 @@ SOURCE_ARTIFACTS = ('Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/Men
                     'Assets/Fonts/PlusJakartaSans-OFL.txt')
 LOCALIZATION_ARTIFACTS = tuple(f'Resources/Localization/{language}.lproj/{table}.strings'
                                for language in ('en', 'it', 'es', 'fr', 'de', 'pt-BR', 'ja', 'zh-Hans')
-                               for table in ('Localizable', 'InfoPlist'))
+                               for table in ('Localizable', 'InfoPlist',
+                                             'AppleStyleUpdateDriver'))
 SPARKLE_LICENSE_SHA256 = '389a4e4e9a32f059775b13a06e25a591445ba229d2838d26dd3e7c0c45127cfe'
 FRAMEWORK = '$app/Contents/Frameworks/Sparkle.framework'
 ARTIFACT = b'artifact\n'

@@ -11,17 +11,22 @@ SOURCES = ROOT / 'Sources'
 LANGUAGES = ('en', 'it', 'es', 'fr', 'de', 'pt-BR', 'ja', 'zh-Hans')
 ENGLISH = 'en'
 # Closed list of the tables in every language folder.
-TABLES = ('Localizable', 'InfoPlist')
+TABLES = ('Localizable', 'InfoPlist', 'AppleStyleUpdateDriver')
 # Tables whose English values are their keys.
-KEYED_BY_ENGLISH = ('Localizable',)
+KEYED_BY_ENGLISH = ('Localizable', 'AppleStyleUpdateDriver')
+# The update driver reads its own table, shared verbatim with another app.
+DRIVER = SOURCES / 'MonoPods/AppleStyleUpdateDriver.swift'
+DRIVER_TABLE = 'AppleStyleUpdateDriver'
 BLUETOOTH_KEYS = ('NSBluetoothAlwaysUsageDescription', 'NSBluetoothPeripheralUsageDescription')
-# Closed list of the values that stay English in one language: (language, key).
+# Closed list of the values that stay English in one language: (language, key), in every table
+# that has the key.
 SAME_AS_ENGLISH = {
     ('it', 'Mono'), ('es', 'Mono'), ('fr', 'Mono'), ('de', 'Mono'), ('pt-BR', 'Mono'),
     ('it', 'Stereo'), ('de', 'Stereo'),
     ('fr', 'Options'), ('de', 'Details'), ('de', 'Status: %@'),
     ('fr', 'Version %@'), ('de', 'Version %@'),
     ('fr', 'Version %@ (%@)'), ('de', 'Version %@ (%@)'),
+    ('it', 'OK'), ('fr', 'OK'), ('de', 'OK'), ('pt-BR', 'OK'), ('ja', 'OK'),
 }
 # Visible texts that are also state: the code compares them and writes them to logs, so they
 # stay English in the source and are translated only where they are shown.
@@ -60,6 +65,7 @@ STRINGS_ESCAPE = re.compile(r'\\(["\\n])')
 POSITIONAL = re.compile(r'%([1-9][0-9]*)\$@')
 UNICODE_ESCAPE = re.compile(r'\{([0-9A-Fa-f]{1,8})\}')
 CALL = re.compile(r'\bLocalized\.(?:text|format)\(')
+DRIVER_CALL = re.compile(r'(?<!func )\blocalized\(')
 SWIFT_ESCAPES = {'"': '"', '\\': '\\', 'n': '\n'}
 
 
@@ -205,6 +211,22 @@ def localized_calls() -> tuple[set[str], list[Path]]:
     return keys, non_literal
 
 
+def driver_calls() -> tuple[set[str], int]:
+    """Literal keys passed to `localized(` in the driver file, and the count of other calls."""
+    keys: set[str] = set()
+    non_literal = 0
+    source = DRIVER.read_text()
+    for match in DRIVER_CALL.finditer(source):
+        start = match.end()
+        while source[start] in ' \n':
+            start += 1
+        if source[start] == '"':
+            keys.add(swift_literal(source, start)[0])
+        else:
+            non_literal += 1
+    return keys, non_literal
+
+
 def state_texts() -> set[str]:
     return {text for texts in STATE_TEXTS.values() for text in texts}
 
@@ -329,12 +351,14 @@ class LocalizationTableTests(unittest.TestCase):
                         self.assertTrue(value and value == value.strip())
                         if language != ENGLISH and (language, key) not in SAME_AS_ENGLISH:
                             self.assertNotEqual(value, english[key])
-        localizable = table(ENGLISH, 'Localizable')
         for language, key in sorted(SAME_AS_ENGLISH):
             with self.subTest(language=language, key=key):
                 self.assertIn(language, LANGUAGES)
                 self.assertNotEqual(language, ENGLISH)
-                self.assertEqual(table(language, 'Localizable')[key], localizable[key])
+                names = [name for name in TABLES if key in table(ENGLISH, name)]
+                self.assertTrue(names)
+                for name in names:
+                    self.assertEqual(table(language, name)[key], table(ENGLISH, name)[key])
 
 
 class LocalizationSourceTests(unittest.TestCase):
@@ -345,6 +369,11 @@ class LocalizationSourceTests(unittest.TestCase):
         for key in sorted(keys):
             with self.subTest(key=key):
                 self.assertIn(key, localizable)
+
+    def test_l6_the_driver_keys_are_exactly_its_table(self):
+        keys, non_literal = driver_calls()
+        self.assertEqual(non_literal, 0)
+        self.assertEqual(sorted(keys), sorted(table(ENGLISH, DRIVER_TABLE)))
 
     def test_l7_non_literal_calls_only_in_the_listed_files(self):
         _, non_literal = localized_calls()
