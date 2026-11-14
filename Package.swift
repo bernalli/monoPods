@@ -30,8 +30,10 @@ let package = Package(
     .executableTarget(
       name: "MonoPodsReport", dependencies: ["MonoPodsCore", "MonoPodsReportCLI"]),
     .testTarget(
+      name: "MonoPodsAppTests", dependencies: ["MonoPods"], path: "Tests/MonoPodsAppTests"),
+    .testTarget(
       name: "MonoPodsCoreTests", dependencies: ["MonoPodsCore", "MonoPodsReportCLI"], path: "Tests",
-      exclude: ["MonoPodsRuntimeTests"], resources: [.copy("Fixtures")]),
+      exclude: ["MonoPodsRuntimeTests", "MonoPodsAppTests"], resources: [.copy("Fixtures")]),
   ],
   swiftLanguageModes: [.v6]
 )
