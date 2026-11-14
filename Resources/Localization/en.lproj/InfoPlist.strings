@@ -1,0 +1,2 @@
+"NSBluetoothAlwaysUsageDescription" = "MonoPods observes the connected Bluetooth audio output and ear detection state.";
+"NSBluetoothPeripheralUsageDescription" = "MonoPods observes connected Bluetooth audio devices without scanning.";

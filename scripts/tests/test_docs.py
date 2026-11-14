@@ -150,7 +150,7 @@ class ReadmeTests(unittest.TestCase):
 
     def test_updates_name_the_command_the_app_shows(self):
         source = (ROOT / 'Sources/MonoPodsRuntime/UpdatePolicy.swift').read_text()
-        found = re.findall(r'static let check = "([^"]+)"', source)
+        found = re.findall(r'static var check: String \{ Localized\.text\("([^"]+)"\) \}', source)
         self.assertEqual(len(found), 1)
         command = found[0].replace('\\u{2026}', '…')
         self.assertIn(command, joined(section(self.lines, 'Updates')))

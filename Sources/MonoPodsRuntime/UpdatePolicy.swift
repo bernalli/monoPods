@@ -160,13 +160,17 @@ public struct UpdateMenuState: Equatable, Sendable {
 
 /// Fixed texts of the update command and of the update states.
 public enum UpdateText {
-  public static let check = "Check for Updates\u{2026}"
+  public static var check: String { Localized.text("Check for Updates\u{2026}") }
+  /// Also the runtime status while installing, so it stays English; it is translated where shown.
   public static let installing =
     "An update is being installed. MonoPods restarts when the new version is in place."
-  public static let resume = "Resume Without Updating\u{2026}"
-  public static let resumeTitle = "Resume Without Updating?"
-  public static let resumeText =
-    "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates\u{2026} again or reinstall MonoPods from the disk image."
-  public static let resumeConfirm = "Resume"
-  public static let cancel = "Cancel"
+  public static var resume: String { Localized.text("Resume Without Updating\u{2026}") }
+  public static var resumeTitle: String { Localized.text("Resume Without Updating?") }
+  public static var resumeText: String {
+    Localized.text(
+      "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image."
+    )
+  }
+  public static var resumeConfirm: String { Localized.text("Resume") }
+  public static var cancel: String { Localized.text("Cancel") }
 }

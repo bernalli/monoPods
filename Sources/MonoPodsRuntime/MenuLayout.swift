@@ -70,14 +70,16 @@ public struct MenuState: Equatable, Sendable {
 /// Fixed titles of the menu items.
 public enum MenuTitle {
   public static let header = "MonoPods"
-  public static let details = "Details"
-  public static let options = "Options"
-  public static let launchAtLogin = "Launch at Login"
-  public static let hideIcon = "Hide Menu Bar Icon"
-  public static let hideIconCaption = "Open MonoPods again to bring it back."
-  public static let about = "About MonoPods"
-  public static let reportIssue = "Report an Issue\u{2026}"
-  public static let quit = "Quit MonoPods"
+  public static var details: String { Localized.text("Details") }
+  public static var options: String { Localized.text("Options") }
+  public static var launchAtLogin: String { Localized.text("Launch at Login") }
+  public static var hideIcon: String { Localized.text("Hide Menu Bar Icon") }
+  public static var hideIconCaption: String {
+    Localized.format("Open %@ again to bring it back.", "MonoPods")
+  }
+  public static var about: String { Localized.format("About %@", "MonoPods") }
+  public static var reportIssue: String { Localized.text("Report an Issue\u{2026}") }
+  public static var quit: String { Localized.format("Quit %@", "MonoPods") }
 }
 
 /// The menu as a list of rows, without AppKit, so its content can be tested.
@@ -104,7 +106,7 @@ public enum MenuLayout {
       MenuRow(
         id: "login", title: MenuTitle.launchAtLogin, symbol: "power",
         kind: .toggle(.launchAtLogin, isOn: state.launchAtLogin)))
-    options += info(state.loginCaption, id: "login.caption")
+    options += info(Localized.text(state.loginCaption), id: "login.caption")
     options.append(MenuRow(id: "options.separator", title: "", symbol: nil, kind: .separator))
     options.append(
       MenuRow(

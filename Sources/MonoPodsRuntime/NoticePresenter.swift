@@ -29,12 +29,13 @@ import MonoPodsCore
     panel.title = "MonoPods"
     panel.level = .floating
     panel.isReleasedWhenClosed = false
-    let text = NSTextField(wrappingLabelWithString: Self.message(notice))
+    let text = NSTextField(wrappingLabelWithString: Localized.text(Self.message(notice)))
     text.frame = NSRect(x: 20, y: 55, width: 370, height: 72)
     panel.contentView?.addSubview(text)
     if notice == .detectionDisabled || notice == .detectionQuitReminder {
       let button = NSButton(
-        title: "Open Bluetooth Settings", target: self, action: #selector(openBluetooth))
+        title: Localized.text("Open Bluetooth Settings"), target: self,
+        action: #selector(openBluetooth))
       button.frame = NSRect(x: 20, y: 15, width: 240, height: 30)
       panel.contentView?.addSubview(button)
     }

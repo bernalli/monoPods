@@ -21,10 +21,11 @@ public struct AppInformation: Equatable, Sendable {
 
   public var versionLabel: String {
     switch (version, build) {
-    case (.some(let version), .some(let build)): return "Version \(version) (\(build))"
-    case (.some(let version), .none): return "Version \(version)"
-    case (.none, .some(let build)): return "Version Unavailable (Build \(build))"
-    case (.none, .none): return "Version Unavailable"
+    case (.some(let version), .some(let build)):
+      return Localized.format("Version %@ (%@)", version, build)
+    case (.some(let version), .none): return Localized.format("Version %@", version)
+    case (.none, .some(let build)): return Localized.format("Version Unavailable (Build %@)", build)
+    case (.none, .none): return Localized.text("Version Unavailable")
     }
   }
 }

@@ -45,7 +45,7 @@ source_commit=$(source_identity)
 python3 - <<'PY'
 from pathlib import Path
 root = Path.cwd()
-for path in [root / 'build', root / '.build', root / 'Assets', root / 'Assets/Fonts', root / 'Resources', root / 'dist', root / 'dist/MonoPods.app']:
+for path in [root / 'build', root / '.build', root / 'Assets', root / 'Assets/Fonts', root / 'Resources', root / 'Resources/Localization', root / 'dist', root / 'dist/MonoPods.app']:
     if path.is_symlink() or (path.name == 'MonoPods.app' and path.exists()):
         raise SystemExit('Unsafe or existing output; choose a clean artifact checkout')
 for relative in ['Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/MenuBarIcon@2x.png',
@@ -55,6 +55,24 @@ for relative in ['Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/MenuBa
     source = root / relative
     if source.is_symlink() or not source.is_file():
         raise SystemExit('Unsafe source artifact')
+# Only the closed set of language folders and tables, all regular files, none a link.
+localization = root / 'Resources/Localization'
+languages = ['en', 'it', 'es', 'fr', 'de', 'pt-BR', 'ja', 'zh-Hans']
+tables = ['Localizable.strings', 'InfoPlist.strings']
+if localization.is_symlink() or not localization.is_dir():
+    raise SystemExit('Unsafe localization')
+if sorted(entry.name for entry in localization.iterdir()) != sorted(name + '.lproj' for name in languages):
+    raise SystemExit('Unexpected localization folders')
+for language in languages:
+    folder = localization / (language + '.lproj')
+    if folder.is_symlink() or not folder.is_dir():
+        raise SystemExit('Unsafe localization')
+    if sorted(entry.name for entry in folder.iterdir()) != sorted(tables):
+        raise SystemExit('Unexpected localization tables')
+    for name in tables:
+        table = folder / name
+        if table.is_symlink() or not table.is_file():
+            raise SystemExit('Unsafe localization')
 (root / 'dist').mkdir(exist_ok=True)
 PY
 flags=(--disable-sandbox --cache-path build/cache --config-path build/config --security-path build/security)
@@ -77,6 +95,7 @@ cp "$bin_path/MonoPods" "$app/Contents/MacOS/MonoPods"
 python3 scripts/bundle-info.py Resources/Info.plist LICENSE "$app/Contents/Info.plist" ${info_options[@]+"${info_options[@]}"}
 cp Assets/AppIcon.icns Assets/MenuBarIcon.png Assets/MenuBarIcon@2x.png Assets/GitHubMark.pdf "$app/Contents/Resources/"
 cp Assets/Fonts/PlusJakartaSans-SemiBold.ttf Assets/Fonts/PlusJakartaSans-OFL.txt "$app/Contents/Resources/"
+ditto Resources/Localization "$app/Contents/Resources"
 plutil -lint "$app/Contents/Info.plist"
 # Sparkle comes from the build products: a real directory inside .build, copied with its links.
 framework_src="$bin_path/Sparkle.framework"

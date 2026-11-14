@@ -1,0 +1,2 @@
+"NSBluetoothAlwaysUsageDescription" = "MonoPods osserva l’uscita audio Bluetooth collegata e lo stato del rilevamento dell’orecchio.";
+"NSBluetoothPeripheralUsageDescription" = "MonoPods osserva i dispositivi audio Bluetooth collegati senza cercarne di nuovi.";

@@ -28,6 +28,9 @@ SOURCE_ARTIFACTS = ('Assets/AppIcon.icns', 'Assets/MenuBarIcon.png', 'Assets/Men
                     'Assets/GitHubMark.pdf', 'Resources/Info.plist', 'LICENSE',
                     'ThirdParty/Sparkle-LICENSE.txt', 'Assets/Fonts/PlusJakartaSans-SemiBold.ttf',
                     'Assets/Fonts/PlusJakartaSans-OFL.txt')
+LOCALIZATION_ARTIFACTS = tuple(f'Resources/Localization/{language}.lproj/{table}.strings'
+                               for language in ('en', 'it', 'es', 'fr', 'de', 'pt-BR', 'ja', 'zh-Hans')
+                               for table in ('Localizable', 'InfoPlist'))
 SPARKLE_LICENSE_SHA256 = '389a4e4e9a32f059775b13a06e25a591445ba229d2838d26dd3e7c0c45127cfe'
 FRAMEWORK = '$app/Contents/Frameworks/Sparkle.framework'
 ARTIFACT = b'artifact\n'
@@ -179,6 +182,14 @@ class ReleaseTests(unittest.TestCase):
                      and not name.endswith('Sparkle-LICENSE.txt')}
         copied = {'Contents/Resources/' + Path(name).name for command in copies for name in command[1:-1]}
         self.assertEqual(resources, copied)
+
+    def test_bundle_copies_the_localization_tables_after_the_fonts(self):
+        lines = (SCRIPTS / 'bundle.sh').read_text().splitlines()
+        copy = 'ditto Resources/Localization "$app/Contents/Resources"'
+        self.assertEqual(lines.count(copy), 1)
+        fonts = [index for index, line in enumerate(lines) if line.startswith('cp Assets/Fonts/')]
+        self.assertEqual(len(fonts), 1)
+        self.assertEqual(lines.index(copy), fonts[0] + 1)
 
     def test_font_and_license_are_the_unmodified_official_assets(self):
         fonts = SCRIPTS.parent / 'Assets/Fonts'
@@ -570,6 +581,10 @@ class ReleaseTests(unittest.TestCase):
         for relative in SOURCE_ARTIFACTS:
             path = self.repo / relative
             path.parent.mkdir(exist_ok=True)
+            path.write_bytes(ARTIFACT)
+        for relative in LOCALIZATION_ARTIFACTS:
+            path = self.repo / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(ARTIFACT)
         for args in (('init', '-q', '-b', 'feature/fixture'),
                      ('add', 'scripts', 'Assets', 'Resources', 'LICENSE', 'ThirdParty'),

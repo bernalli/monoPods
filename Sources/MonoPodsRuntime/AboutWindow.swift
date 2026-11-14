@@ -3,9 +3,9 @@ import SwiftUI
 
 /// Visible text of the About window.
 public enum AboutText {
-  public static let windowTitle = "About MonoPods"
-  public static let gitHubHelp = "View MonoPods on GitHub"
-  public static let sponsor = "Buy Me a Coffee"
+  public static var windowTitle: String { Localized.format("About %@", "MonoPods") }
+  public static var gitHubHelp: String { Localized.format("View %@ on GitHub", "MonoPods") }
+  public static var sponsor: String { Localized.text("Buy Me a Coffee") }
 }
 
 public enum AboutArtwork {
