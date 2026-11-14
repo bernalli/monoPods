@@ -37,14 +37,31 @@ public struct UpdateGate: Sendable {
 public struct UpdateMenuState: Equatable, Sendable {
   /// The build has a channel and an updater exists.
   public var available: Bool
-  /// The updater started, both automatic settings are off and Sparkle accepts a check now.
+  /// The updater started, automatic downloads are off and Sparkle accepts a check now.
   public var canCheck: Bool
-  public init(available: Bool, canCheck: Bool) {
+  /// Sparkle's scheduled checks are on: the user's choice.
+  public var automaticChecks: Bool
+  public init(available: Bool, canCheck: Bool, automaticChecks: Bool = false) {
     self.available = available
     self.canCheck = canCheck
+    self.automaticChecks = automaticChecks
   }
   public var showsItems: Bool { available }
   public var checkEnabled: Bool { available && canCheck }
+}
+
+/// The answer to the question about automatic checks at first launch.
+public enum AutomaticUpdateAnswer: Sendable {
+  case enable, decline, dismissed
+
+  /// The first button enables, the second declines; anything else dismisses.
+  public init(buttonIndex: Int?) {
+    switch buttonIndex {
+    case 0: self = .enable
+    case 1: self = .decline
+    default: self = .dismissed
+    }
+  }
 }
 
 /// The updater as the update logic sees it; the app target adapts Sparkle to it.
@@ -52,22 +69,30 @@ public struct UpdateMenuState: Equatable, Sendable {
   var automaticChecks: Bool { get }
   var automaticDownloads: Bool { get }
   var canCheckForUpdates: Bool { get }
-  /// Values in the app's persistent domain, without Sparkle's filtering or defaults.
-  var rawAutomaticChecks: Any? { get }
+  /// Value in the app's persistent domain, without Sparkle's filtering or defaults.
   var rawAutomaticDownloads: Any? { get }
-  /// Writes raw preferences first, then Sparkle setters; downloads before checks in each pair.
-  func switchOffAutomatic()
+  /// True once the question about automatic checks has been asked.
+  var automaticUpdateQuestionAsked: Bool { get }
+  /// Writes the raw download preference first, then the Sparkle setter.
+  func switchOffAutomaticDownloads()
+  /// Sets Sparkle's scheduled checks; nothing else writes them.
+  func setAutomaticChecks(_ enabled: Bool)
+  /// Records, in the app's preferences, that the question has been asked.
+  func markAutomaticUpdateQuestionAsked()
   /// Flushes the app's preferences and reports whether persistence succeeded.
   func synchronizeAutomaticPreferences() -> Bool
   func startUpdater() -> Bool
   func checkForUpdates()
 }
 
-/// Manual checks only: Sparkle's automatic settings stay off, and only the menu command
-/// authorizes a check. No check happens without that command.
+/// Automatic downloads stay off. Scheduled checks are the user's choice, asked once at first
+/// launch; a user check passes once per menu command. Every installation still needs the
+/// user's Install.
 @MainActor public final class UpdateCoordinator {
   public private(set) var state = UpdateMenuState(available: false, canCheck: false)
   public var onChange: (@MainActor () -> Void)?
+  /// Shows the question about automatic checks; the reply may come later, or never.
+  public var ask: (@MainActor (@escaping @MainActor (AutomaticUpdateAnswer) -> Void) -> Void)?
   private let port: any UpdaterPort
   private var started = false
   private var updaterStarted = false
@@ -75,26 +100,44 @@ public struct UpdateMenuState: Equatable, Sendable {
   private var preferencesSynchronized = false
   private var gateOpen = false
   private var manualPending = false
+  private var questionPending = false
 
   public init(port: any UpdaterPort) {
     self.port = port
   }
 
-  /// Switches both automatic settings off, also those an older build left on, then starts
-  /// the updater. Nothing is asked.
+  /// Switches automatic downloads off, also when an older build left them on. On the first
+  /// launch it turns checks off and writes the flag before it asks, so the question comes once.
   public func start() {
     guard !started else { return }
     started = true
     state.available = true
     switchOff()
+    if !port.automaticUpdateQuestionAsked {
+      port.setAutomaticChecks(false)
+      port.markAutomaticUpdateQuestionAsked()
+      questionPending = true
+    }
     updaterStarted = port.startUpdater()
+    canCheckChanged()
+    if questionPending {
+      ask? { [weak self] answer in self?.answer(answer) }
+    }
+  }
+
+  /// The switch in the menu. It also settles a question still waiting for its answer.
+  public func setAutomaticChecks(_ enabled: Bool) {
+    guard started else { return }
+    questionPending = false
+    port.setAutomaticChecks(enabled)
     canCheckChanged()
   }
 
-  /// Key-value observation of either setting, also from outside the app: on is switched off.
+  /// Key-value observation of either setting, also from outside the app: downloads on are
+  /// switched off; a change of the checks is accepted.
   public func settingsChanged() {
     guard started, !changingPreferences else { return }
-    if preferencesSynchronized && settingsOff {
+    if preferencesSynchronized && downloadsOff {
       gateOpen = true
     } else {
       switchOff()
@@ -104,32 +147,39 @@ public struct UpdateMenuState: Equatable, Sendable {
 
   public func canCheckChanged() {
     state.canCheck =
-      updaterStarted && gateOpen && !changingPreferences && settingsOff && port.canCheckForUpdates
+      updaterStarted && gateOpen && !changingPreferences && downloadsOff && port.canCheckForUpdates
+    state.automaticChecks = port.automaticChecks
     publish()
   }
 
-  /// The menu command. It alone authorizes a check.
+  /// The menu command. It alone authorizes a user check.
   public func checkForUpdates() {
-    guard state.checkEnabled, gateOpen, settingsOff else { return }
+    guard state.checkEnabled, gateOpen, downloadsOff else { return }
     manualPending = true
     port.checkForUpdates()
   }
 
-  /// Sparkle asks before every check. A scheduled check is always refused; a user check
-  /// passes once per menu command, with both automatic settings off.
+  /// Sparkle asks before every check. A user check passes once per menu command; a scheduled
+  /// check passes only with automatic checks on and the question answered. Both need
+  /// automatic downloads off.
   public func mayPerformCheck(userInitiated: Bool) -> Bool {
-    guard userInitiated, updaterStarted, gateOpen, !changingPreferences, settingsOff,
-      manualPending
-    else { return false }
+    guard updaterStarted, gateOpen, !changingPreferences, downloadsOff else { return false }
+    guard userInitiated else { return port.automaticChecks && !questionPending }
+    guard manualPending else { return false }
     manualPending = false
     return true
   }
 
-  private var settingsOff: Bool {
-    let rawChecks = port.rawAutomaticChecks
-    let rawDownloads = port.rawAutomaticDownloads
-    return Self.isBooleanFalse(rawChecks) && Self.isBooleanFalse(rawDownloads)
-      && !port.automaticChecks && !port.automaticDownloads
+  /// Only the first answer to a pending question counts.
+  private func answer(_ answer: AutomaticUpdateAnswer) {
+    guard questionPending else { return }
+    questionPending = false
+    port.setAutomaticChecks(answer == .enable)
+    canCheckChanged()
+  }
+
+  private var downloadsOff: Bool {
+    Self.isBooleanFalse(port.rawAutomaticDownloads) && !port.automaticDownloads
   }
 
   /// `as? Bool` also accepts NSNumber(0/1). Only a property-list boolean is evidence.
@@ -140,18 +190,18 @@ public struct UpdateMenuState: Equatable, Sendable {
     return !number.boolValue
   }
 
-  /// The only path that writes the two settings. A failed write leaves the gate closed.
+  /// The only path that writes automatic downloads. A failed write leaves the gate closed.
   private func switchOff() {
     guard !changingPreferences else { return }
     changingPreferences = true
     gateOpen = false
     preferencesSynchronized = false
     canCheckChanged()
-    port.switchOffAutomatic()
+    port.switchOffAutomaticDownloads()
     preferencesSynchronized = port.synchronizeAutomaticPreferences()
-    // Read the raw values after synchronization, even when the effective getters say off.
-    let settingsAreOff = settingsOff
-    gateOpen = preferencesSynchronized && settingsAreOff
+    // Read the raw value after synchronization, even when the effective getter says off.
+    let downloadsAreOff = downloadsOff
+    gateOpen = preferencesSynchronized && downloadsAreOff
     changingPreferences = false
   }
 

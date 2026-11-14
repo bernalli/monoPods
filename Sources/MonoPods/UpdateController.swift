@@ -4,9 +4,9 @@ import MonoPodsCore
 import MonoPodsRuntime
 import Sparkle
 
-/// The Sparkle updater of the product owner. Checks happen only on the user's command; the
-/// network gate and the installation gate are decided by `UpdateCoordinator` and
-/// `UpdateInstaller`.
+/// The Sparkle updater of the product owner. Checks happen on the user's command and, if the
+/// user turned them on, on Sparkle's schedule; the network gate and the installation gate are
+/// decided by `UpdateCoordinator` and `UpdateInstaller`.
 @MainActor final class UpdateController: NSObject, ObservableObject {
   @Published private(set) var state = UpdateMenuState(available: false, canCheck: false)
   private let host: RuntimeHost
@@ -22,7 +22,7 @@ import Sparkle
     self.host = host
   }
 
-  /// Creates the updater once; the coordinator switches the automatic settings off and starts it.
+  /// Creates the updater once; the coordinator switches automatic downloads off and starts it.
   func start() {
     guard updater == nil, let store = host.handoffStore, let version = host.bundleVersion else {
       return
@@ -52,6 +52,8 @@ import Sparkle
       guard let self, let coordinator else { return }
       if state != coordinator.state { state = coordinator.state }
     }
+    // The real question arrives with its own window; this placeholder never replies.
+    coordinator.ask = { _ in }
     self.coordinator = coordinator
     observations = [
       updater.observe(\.canCheckForUpdates) { [weak self] _, _ in
@@ -99,23 +101,30 @@ import Sparkle
 
 private enum UpdateRefusal: Error { case notAllowed, preparing }
 
-/// The only object that writes Sparkle's two automatic settings, and only to off.
+/// The only object that writes Sparkle's two automatic settings: downloads only to off,
+/// checks only as the user chose.
 @MainActor private final class SparklePort: UpdaterPort {
   private weak var updater: SPUUpdater?
   private let preferencesDomain: String?
-  private let checksKey = "SUEnableAutomaticChecks" as CFString
   private let downloadsKey = "SUAutomaticallyUpdate" as CFString
+  private let questionKey = "automaticUpdateQuestionAsked" as CFString
 
   init(updater: SPUUpdater, preferencesDomain: String?) {
     self.updater = updater
     self.preferencesDomain = preferencesDomain
   }
-  /// A missing updater reads as on, so the gate stays closed.
-  var automaticChecks: Bool { updater?.automaticallyChecksForUpdates ?? true }
+  /// A missing updater reads as no scheduled checks and downloads on, so the gate stays closed.
+  var automaticChecks: Bool { updater?.automaticallyChecksForUpdates ?? false }
   var automaticDownloads: Bool { updater?.automaticallyDownloadsUpdates ?? true }
   var canCheckForUpdates: Bool { updater?.canCheckForUpdates ?? false }
-  var rawAutomaticChecks: Any? { rawPreference(checksKey) }
   var rawAutomaticDownloads: Any? { rawPreference(downloadsKey) }
+  /// Only a property-list boolean true counts as asked.
+  var automaticUpdateQuestionAsked: Bool {
+    guard let number = rawPreference(questionKey) as? NSNumber,
+      CFGetTypeID(number) == CFBooleanGetTypeID()
+    else { return false }
+    return number.boolValue
+  }
 
   /// Sparkle uses the main app's defaults domain. CopyValue avoids registered/global
   /// defaults and Info.plist fallbacks: missing or malformed values must close the gate.
@@ -125,14 +134,22 @@ private enum UpdateRefusal: Error { case notAllowed, preparing }
       key, preferencesDomain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
   }
 
-  /// Raw writes cannot be masked by Sparkle's allowsAutomaticUpdates filter.
-  func switchOffAutomatic() {
+  /// The raw write cannot be masked by Sparkle's allowsAutomaticUpdates filter.
+  func switchOffAutomaticDownloads() {
     guard let updater, let preferencesDomain else { return }
     let domain = preferencesDomain as CFString
     CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)
-    CFPreferencesSetAppValue(checksKey, kCFBooleanFalse, domain)
     updater.automaticallyDownloadsUpdates = false
-    updater.automaticallyChecksForUpdates = false
+  }
+  /// Sparkle's setter writes its own preference.
+  func setAutomaticChecks(_ enabled: Bool) {
+    updater?.automaticallyChecksForUpdates = enabled
+  }
+  func markAutomaticUpdateQuestionAsked() {
+    guard let preferencesDomain else { return }
+    let domain = preferencesDomain as CFString
+    CFPreferencesSetAppValue(questionKey, kCFBooleanTrue, domain)
+    _ = CFPreferencesAppSynchronize(domain)
   }
   func synchronizeAutomaticPreferences() -> Bool {
     guard let preferencesDomain else { return false }

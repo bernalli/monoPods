@@ -82,27 +82,28 @@ class UpdateWiringTests(unittest.TestCase):
                     self.assertNotIn('checkForUpdatesInBackground', text)
 
     def test_raw_preferences_and_sparkle_setters_are_switched_off_before_sync(self):
-        names = ('automaticallyDownloadsUpdates =', 'automaticallyChecksForUpdates =')
+        downloads = 'automaticallyDownloadsUpdates ='
+        checks = 'automaticallyChecksForUpdates ='
         for path in swift_sources():
             text = path.read_text()
-            for name in names:
+            for name in (downloads, checks):
                 with self.subTest(path=path.relative_to(ROOT), name=name):
                     if path.name != 'UpdateController.swift':
                         self.assertNotIn(name, text)
                         continue
                     self.assertEqual(text.count(name), 1)
-                    self.assertEqual(text.count(name + ' false'), 1)
             if path.name == 'UpdateController.swift':
-                body = text[text.index('func switchOffAutomatic(') :]
+                self.assertEqual(text.count(downloads + ' false'), 1)
+                self.assertEqual(text.count(checks + ' enabled'), 1)
+                self.assertNotIn('CFPreferencesSetAppValue(checksKey', text)
+                body = text[text.index('func switchOffAutomaticDownloads(') :]
                 body = body[: body.index('\n  }\n')]
-                for key in ('downloadsKey', 'checksKey'):
-                    self.assertIn(f'CFPreferencesSetAppValue({key}, kCFBooleanFalse, domain)', body)
-                positions = [
-                    body.index('CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)'),
-                    body.index('CFPreferencesSetAppValue(checksKey, kCFBooleanFalse, domain)'),
-                    *(body.index(name + ' false') for name in names),
-                ]
-                self.assertEqual(positions, sorted(positions))
+                raw = 'CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)'
+                self.assertIn(raw, body)
+                self.assertIn(downloads + ' false', body)
+                self.assertLess(body.index(raw), body.index(downloads + ' false'))
+                setter = text[text.index('func setAutomaticChecks(') :]
+                self.assertIn(checks + ' enabled', setter[: setter.index('\n  }\n')])
                 sync = text[text.index('func synchronizeAutomaticPreferences(') :]
                 self.assertIn('return CFPreferencesAppSynchronize(domain)', sync)
                 self.assertIn('CFPreferencesCopyValue(', text)
