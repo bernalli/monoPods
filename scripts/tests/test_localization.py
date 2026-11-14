@@ -292,6 +292,43 @@ class ParserTests(unittest.TestCase):
                 with self.assertRaises(StringsError):
                     swift_literal(source, 0)
 
+    def test_generated_tables_reject_structural_and_placeholder_mutations(self):
+        for count in range(1, 33):
+            key = f'K{count:02} è ' + ' '.join(['%@'] * count)
+            value = 'V ' + ' '.join(
+                f'%{i}$@' for i in range(count, 0, -1))
+            row = f'"{key}" = "{value}";\n'.encode()
+            other = b'"Z" = "z";\n'
+            self.assertEqual(validate(row), [(key, value)])
+            self.assertEqual(len(validate(row + other)), 2)
+
+            malformed = [
+                row + row,
+                other + row,
+                row + b'extra\n',
+                row.replace(b' = ', b' ', 1),
+                row.replace(b' = ', b' = 0 ', 1),
+            ]
+            malformed += [row[:end] for end in range(len(row))]
+            malformed += [
+                row[:end] + b'\n' for end in range(len(row) - 1)
+            ]
+            for data in malformed:
+                with self.subTest(count=count, data=data):
+                    with self.assertRaises(StringsError):
+                        validate(data)
+
+            replacements = [
+                '', '%d', '%',
+                ' '.join(['%@'] * (count + 1)),
+                ' '.join(f'%{i}$@' for i in range(2, count + 2)),
+            ]
+            for replacement in replacements:
+                data = f'"{key}" = "{replacement}";\n'.encode()
+                with self.subTest(count=count, value=replacement):
+                    with self.assertRaises(StringsError):
+                        validate(data)
+
 
 class LocalizationTableTests(unittest.TestCase):
     def test_l1_exactly_the_languages_and_tables_as_regular_files(self):
