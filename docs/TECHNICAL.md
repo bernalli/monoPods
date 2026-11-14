@@ -70,10 +70,12 @@ measured.
 
 ## Updates and helper processes
 
-Sparkle checks for updates only when the user chooses Check for Updates… in the
-menu. At every launch, the app turns off Sparkle's automatic checks and
-automatic downloads. If either is turned on later, the app turns both off
-again. The app refuses every scheduled check.
+Sparkle checks for updates when the user chooses Check for Updates… and, if
+Automatic Updates is on, about once a day. At every launch, the app turns off
+Sparkle's automatic downloads. If automatic downloads are turned on later, the
+app turns them off again. The app allows a scheduled check only while Automatic
+Updates is on; every update installs only after the user chooses Install and
+Relaunch.
 
 MonoPods normally runs as a single process. Sparkle uses Autoupdate and Updater
 while preparing and installing an update. Installation is allowed only after

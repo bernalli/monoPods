@@ -22,7 +22,7 @@ Click the MonoPods icon at the top right of your screen to open its menu. It sta
 
 ## Updates
 
-Choose Check for Updates… to check for a new version. MonoPods never checks automatically and downloads an update only when you choose to install it.
+Choose Check for Updates… to check for a new version. At first launch MonoPods asks whether to check automatically, about once a day; you can change this with Automatic Updates in Options. MonoPods downloads an update only when you choose Install and Relaunch.
 
 - Before downloading, MonoPods must return the sound to stereo or confirm that there is nothing to restore. From that confirmation until the new version runs, automatic switching is paused.
 - If MonoPods cannot confirm this, it does not install the update and keeps working. Quit and reopen MonoPods before you check again.
