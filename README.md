@@ -18,7 +18,7 @@ Put one AirPod back in its case and your Mac plays both channels through the oth
 2. Open it and drag MonoPods into Applications.
 3. Open MonoPods and allow Bluetooth access when macOS asks.
 
-MonoPods is signed with a Developer ID and notarized by Apple. On first launch it asks whether to check for updates automatically, once a day. You can change this later in Options › Automatic Updates. An update is installed only when you choose Install and Relaunch. Update checks contact GitHub, which receives your IP address and the app version; MonoPods makes no other network requests.
+MonoPods is signed with a Developer ID and notarized by Apple. On first launch it asks whether to check for updates automatically, once a day. You can change this later in Options › Automatic Updates. An update is installed only when you choose Install and Relaunch. Update checks and update downloads contact GitHub, which receives your IP address and the app version; MonoPods makes no other network requests.
 
 ## Use
 

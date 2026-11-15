@@ -22,7 +22,8 @@ README_UPDATES = (
     'On first launch it asks whether to check for updates automatically, once a day. You can '
     'change this later in Options › Automatic Updates. An update is installed only when you '
     'choose Install and Relaunch.')
-NETWORK_SENTENCE = ('Update checks contact GitHub, which receives your IP address and the app '
+NETWORK_SENTENCE = ('Update checks and update downloads contact GitHub, which receives your '
+                    'IP address and the app '
                     'version; MonoPods makes no other network requests.')
 UNSIGNED_PHRASES = ('Open Anyway', 'is not notarized', 'signed ad hoc')
 SYSTEM_LOG = 'MonoPods reads local system-log events for the current Bluetooth audio output.'
