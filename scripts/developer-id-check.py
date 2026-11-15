@@ -107,6 +107,10 @@ def check_entitlements(app: Path) -> None:
     )
     if result.returncode != 0:
         raise CheckError(0)
+    try:
+        result.stderr.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise CheckError(0) from error
     if not result.stdout:
         return
     try:

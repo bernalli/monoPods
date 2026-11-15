@@ -426,6 +426,21 @@ class DeveloperIDCheckTests(unittest.TestCase):
             )
         )
 
+    def test_entitlements_rejects_non_utf8_diagnostics(self):
+        import runpy
+        from unittest import mock
+
+        api = runpy.run_path(str(SCRIPTS / "developer-id-check.py"))
+        for output in (b"", plistlib.dumps({})):
+            result = subprocess.CompletedProcess(
+                [], 0, stdout=output, stderr=b"\xff"
+            )
+            with self.subTest(output=output), mock.patch.object(
+                subprocess, "run", return_value=result
+            ):
+                with self.assertRaises(api["CheckError"]):
+                    api["check_entitlements"](self.app)
+
 
 if __name__ == "__main__":
     unittest.main()
