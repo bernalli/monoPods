@@ -56,7 +56,7 @@ import AppKit
   /// two separators. Section headers keep their own position.
   func infoLayouts(for rows: [MenuRow]) -> [InfoRowLayout] {
     let showsState = rows.contains { row in
-      if case .toggle(_, let isOn) = row.kind { return isOn }
+      if case .toggle(_, let isOn, _) = row.kind { return isOn }
       return false
     }
     let base = metrics.titleInset + (showsState ? metrics.stateColumn : 0)
@@ -113,8 +113,8 @@ import AppKit
       break
     case .info:
       configureInfo(item, with: row, layout: layout)
-    case .toggle(let command, let isOn):
-      configureCommand(item, row: row, command: command, enabled: true)
+    case .toggle(let command, let isOn, let enabled):
+      configureCommand(item, row: row, command: command, enabled: enabled)
       let state: NSControl.StateValue = isOn ? .on : .off
       if item.state != state { item.state = state }
     case .action(let command, let enabled, let key):

@@ -25,7 +25,7 @@ public struct MenuRow: Equatable, Sendable {
     case header
     /// Read-only text: not selectable and not highlighted under the pointer.
     case info
-    case toggle(MenuCommand, isOn: Bool)
+    case toggle(MenuCommand, isOn: Bool, enabled: Bool)
     case action(MenuCommand, enabled: Bool, key: String)
     case submenu([MenuRow])
     case separator
@@ -107,19 +107,19 @@ public enum MenuLayout {
     options.append(
       MenuRow(
         id: "login", title: MenuTitle.launchAtLogin, symbol: "power",
-        kind: .toggle(.launchAtLogin, isOn: state.launchAtLogin)))
+        kind: .toggle(.launchAtLogin, isOn: state.launchAtLogin, enabled: true)))
     options += info(Localized.text(state.loginCaption), id: "login.caption")
     if state.updates.showsItems {
       options.append(
         MenuRow(
           id: "automatic", title: MenuTitle.automaticUpdates, symbol: "arrow.triangle.2.circlepath",
-          kind: .toggle(.automaticUpdates, isOn: state.updates.automaticChecks)))
+          kind: .toggle(.automaticUpdates, isOn: state.updates.automaticChecks, enabled: true)))
     }
     options.append(MenuRow(id: "options.separator", title: "", symbol: nil, kind: .separator))
     options.append(
       MenuRow(
         id: "hide", title: MenuTitle.hideIcon, symbol: "menubar.rectangle",
-        kind: .toggle(.hideMenuBarIcon, isOn: !state.menuVisible)))
+        kind: .toggle(.hideMenuBarIcon, isOn: !state.menuVisible, enabled: true)))
     options += info(MenuTitle.hideIconCaption, id: "hide.caption")
     rows.append(
       MenuRow(id: "options", title: MenuTitle.options, symbol: "gearshape", kind: .submenu(options))

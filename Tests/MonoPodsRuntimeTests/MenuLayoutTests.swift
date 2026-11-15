@@ -40,7 +40,7 @@ private func submenu(_ rows: [MenuRow], titled title: String) -> [MenuRow]? {
 private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   rows.firstIndex { row in
     switch row.kind {
-    case .action(let candidate, _, _), .toggle(let candidate, _): return candidate == command
+    case .action(let candidate, _, _), .toggle(let candidate, _, _): return candidate == command
     default: return false
     }
   }
@@ -133,11 +133,11 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
 @Test func togglesShowTheCurrentSettings() throws {
   let rows = MenuLayout.rows(for: layoutState(launchAtLogin: false, menuVisible: true))
   let options = try #require(submenu(rows, titled: "Options"))
-  #expect(options.contains { $0.kind == .toggle(.launchAtLogin, isOn: false) })
-  #expect(options.contains { $0.kind == .toggle(.hideMenuBarIcon, isOn: false) })
+  #expect(options.contains { $0.kind == .toggle(.launchAtLogin, isOn: false, enabled: true) })
+  #expect(options.contains { $0.kind == .toggle(.hideMenuBarIcon, isOn: false, enabled: true) })
   #expect(options.contains { $0.title == LoginText.nextLogin && $0.kind == .info })
   let hidden = try #require(submenu(MenuLayout.rows(for: layoutState()), titled: "Options"))
-  #expect(hidden.contains { $0.kind == .toggle(.launchAtLogin, isOn: true) })
+  #expect(hidden.contains { $0.kind == .toggle(.launchAtLogin, isOn: true, enabled: true) })
 }
 
 @Test func updateItemsFollowTheUpdaterState() throws {
@@ -166,7 +166,7 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
       options[row]
         == MenuRow(
           id: "automatic", title: "Automatic Updates", symbol: "arrow.triangle.2.circlepath",
-          kind: .toggle(.automaticUpdates, isOn: automaticChecks)))
+          kind: .toggle(.automaticUpdates, isOn: automaticChecks, enabled: true)))
     #expect(options[row - 1].id.hasPrefix("login.caption."))
     #expect(options[row + 1].id == "options.separator")
   }
