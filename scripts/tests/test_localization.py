@@ -25,7 +25,6 @@ SAME_AS_ENGLISH = {
     ('it', 'Stereo'), ('de', 'Stereo'),
     ('fr', 'Options'), ('de', 'Details'), ('de', 'Status: %@'),
     ('fr', 'Version %@'), ('de', 'Version %@'),
-    ('fr', 'Version %@ (%@)'), ('de', 'Version %@ (%@)'),
     ('it', 'OK'), ('fr', 'OK'), ('de', 'OK'), ('pt-BR', 'OK'), ('ja', 'OK'),
 }
 # Visible texts that are also state: the code compares them and writes them to logs, so they
@@ -64,8 +63,9 @@ ABOUT_TEXTS = {
 }
 # Keys that only the About window used; the menu keeps `About %@` and the version lines.
 ABOUT_ONLY_KEYS = ('Buy Me a Coffee', 'View %@ on GitHub')
-MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@ (%@)', 'Version %@',
-                               'Version Unavailable (Build %@)', 'Version Unavailable')
+MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@', 'Version Unavailable')
+# The version lines never show the build number, so no table has a key for it.
+BUILD_VERSION_KEYS = ('Version %@ (%@)', 'Version Unavailable (Build %@)')
 # The only files that may pass a value, not a literal, to Localized.
 NON_LITERAL_FILES = ('MenuPresentation.swift', 'MenuLayout.swift', 'NoticePresenter.swift')
 
@@ -460,6 +460,9 @@ class LocalizationSourceTests(unittest.TestCase):
             for key in MENU_KEYS_SHARED_WITH_ABOUT:
                 with self.subTest(language=language, key=key):
                     self.assertIn(key, localizable)
+            for key in BUILD_VERSION_KEYS:
+                with self.subTest(language=language, key=key):
+                    self.assertNotIn(key, localizable)
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

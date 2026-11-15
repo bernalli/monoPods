@@ -72,9 +72,7 @@
 "Unknown" = "不明";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "アップデートが完了しなかった場合にのみ使用してください。MonoPodsはインストール済みのバージョンを再起動します。その後、もう一度“アップデートを確認…”を選択するか、ディスクイメージからMonoPodsを再インストールしてください。";
 "Version %@" = "バージョン %@";
-"Version %@ (%@)" = "バージョン %@（%@）";
 "Version Unavailable" = "バージョン不明";
-"Version Unavailable (Build %@)" = "バージョン不明（ビルド %@）";
 "Waiting for Ear Detection" = "装着検出を待機中";
 "Waiting for MonoPods…" = "MonoPodsを待機中…";
 "Waiting for a reliable ear detection connection." = "信頼できる装着検出の接続を待機中です。";

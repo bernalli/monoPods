@@ -26,7 +26,7 @@ private func layoutState(
       snapshot: snapshot, routeName: route, routeModel: AirPodsModel.model(productID: 0x2014),
       status: status, loginCaption: login),
     launchAtLogin: launchAtLogin, loginCaption: login,
-    menuVisible: menuVisible, versionLabel: "Version 1.0.1 (11)", updates: updates,
+    menuVisible: menuVisible, versionLabel: "Version 1.0.1", updates: updates,
     waitingForUpdate: waiting)
 }
 
@@ -77,7 +77,7 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   let summary = try #require(rows.first { $0.title == state.presentation.summary })
   #expect(summary.kind == .info)
   #expect(summary.symbol == state.presentation.symbol)
-  #expect(rows.contains { $0.title == "Version 1.0.1 (11)" && $0.kind == .info })
+  #expect(rows.contains { $0.title == "Version 1.0.1" && $0.kind == .info })
   let details = try #require(submenu(rows, titled: "Details"))
   #expect(!details.isEmpty)
   #expect(details.allSatisfy { $0.kind == .info })

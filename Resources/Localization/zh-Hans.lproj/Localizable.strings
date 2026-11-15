@@ -72,9 +72,7 @@
 "Unknown" = "未知";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "仅在更新未完成时使用。MonoPods 会重新启动已安装的版本；之后请再次选择“检查更新…”，或从磁盘映像重新安装 MonoPods。";
 "Version %@" = "版本 %@";
-"Version %@ (%@)" = "版本 %@（%@）";
 "Version Unavailable" = "版本不可用";
-"Version Unavailable (Build %@)" = "版本不可用（构建版本 %@）";
 "Waiting for Ear Detection" = "正在等待入耳检测";
 "Waiting for MonoPods…" = "正在等待 MonoPods…";
 "Waiting for a reliable ear detection connection." = "正在等待可靠的入耳检测连接。";

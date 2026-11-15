@@ -72,9 +72,7 @@
 "Unknown" = "Sconosciuto";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "Usalo solo se l’aggiornamento non è stato completato. MonoPods riavvia la versione installata; poi scegli di nuovo Verifica aggiornamenti… o reinstalla MonoPods dall’immagine disco.";
 "Version %@" = "Versione %@";
-"Version %@ (%@)" = "Versione %@ (%@)";
 "Version Unavailable" = "Versione non disponibile";
-"Version Unavailable (Build %@)" = "Versione non disponibile (build %@)";
 "Waiting for Ear Detection" = "In attesa del rilevamento dell’orecchio";
 "Waiting for MonoPods…" = "In attesa di MonoPods…";
 "Waiting for a reliable ear detection connection." = "In attesa di una connessione affidabile per il rilevamento dell’orecchio.";
