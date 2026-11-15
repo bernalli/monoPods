@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -25,11 +26,35 @@ SIGNATURE = base64.b64encode(bytes(range(64))).decode()
 ACCOUNT = "monopods"
 
 
+# The scripts under test keep a minimal environment, so the stand-ins read their settings from
+# fixture.env, found in a parent folder, and record the names of the variables they received.
+FIXTURE_PREAMBLE = (
+    "#!/bin/bash\nset -eu\n"
+    "received=$(compgen -e); received=${received//$'\\n'/ }\n"
+    'folder=$(cd "${0%/*}" && pwd)\n'
+    'while [ ! -f "$folder/fixture.env" ] && [ -n "$folder" ]; do folder=${folder%/*}; done\n'
+    'set -a; . "$folder/fixture.env"; set +a\n'
+    'printf "%s: %s\\n" "${0##*/}" "$received" >> "$FIXTURE_ENV_LOG"\n'
+)
+# Variables every child may receive: the minimal list, and those the shell or the system add
+# by themselves (bash exports PWD, SHLVL, _ and, after cd, OLDPWD; macOS adds the text encoding
+# and, through the xcrun shim of /usr/bin/python3, the developer paths).
+MINIMAL = {"HOME", "PATH", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "USER", "LOGNAME", "DEVELOPER_DIR"}
+GENERATED = {"PWD", "OLDPWD", "SHLVL", "_", "__CF_USER_TEXT_ENCODING", "CPATH", "LIBRARY_PATH", "MANPATH",
+             "SDKROOT"}
+SECRETS = {
+    "MONOPODS_FIXTURE_TOKEN": "fake-secret-value-1",
+    "ZZ_ARBITRARY_FIXTURE_NAME": "fake-secret-value-2",
+    "GH_TOKEN": "fake-secret-value-3",
+    "A-B": "fake-secret-value-4",
+}
+
+
 def write_tool(path, body):
-    """A stand-in command that records its own name and arguments."""
+    """A stand-in command that records its own name, its arguments and its variable names."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        "#!/bin/bash\nset -eu\n"
+        FIXTURE_PREAMBLE +
         'printf "%s" "$(basename "$0")" >> "$FIXTURE_LOG"\n'
         'for argument in "$@"; do printf " %s" "$argument" >> "$FIXTURE_LOG"; done\n'
         'printf "\\n" >> "$FIXTURE_LOG"\n' + body + "\n"
@@ -50,6 +75,7 @@ class FlowFixture(unittest.TestCase):
         self.tools.mkdir()
         self.log = self.root / "tools.log"
         self.log.write_text("")
+        self.environment_log = self.root / "environment.log"
         self.environment = {
             key: value
             for key, value in os.environ.items()
@@ -59,6 +85,7 @@ class FlowFixture(unittest.TestCase):
             PATH=str(self.tools) + os.pathsep + os.environ["PATH"],
             PYTHONDONTWRITEBYTECODE="1",
             FIXTURE_LOG=str(self.log),
+            FIXTURE_ENV_LOG=str(self.environment_log),
         )
 
     def calls(self):
@@ -67,7 +94,27 @@ class FlowFixture(unittest.TestCase):
     def names(self):
         return [call[0] for call in self.calls()]
 
+    def write_fixture(self):
+        """The FIXTURE_ settings of this run, for stand-ins that do not inherit them."""
+        settings = {
+            key: value for key, value in self.environment.items() if key.startswith("FIXTURE_")
+        }
+        (self.root / "fixture.env").write_text(
+            "".join(f"{key}={shlex.quote(value)}\n" for key, value in sorted(settings.items()))
+        )
+        (self.root / "fixture.json").write_text(json.dumps(settings))
+
+    def received(self):
+        """The variable names each stand-in received, in call order."""
+        if not self.environment_log.exists():
+            return []
+        return [
+            (line.split(": ", 1)[0], set(line.split(": ", 1)[1].split()))
+            for line in self.environment_log.read_text().splitlines()
+        ]
+
     def run_script(self, name, *arguments):
+        self.write_fixture()
         return subprocess.run(
             ["bash", str(self.repo / "scripts" / name), *arguments],
             cwd=self.repo,
@@ -424,7 +471,7 @@ class ReleaseScriptTests(FlowFixture):
         write_tool(
             self.tools / "codesign",
             'case "$*" in\n'
-            '  "--force --timestamp --sign $MONOPODS_SIGNING_IDENTITY dist/MonoPods.dmg")'
+            f'  "--force --timestamp --sign {SHA1} dist/MonoPods.dmg")'
             ' exit "${FIXTURE_DMG_SIGN_EXIT:-0}";;\n'
             '  "--verify --strict dist/MonoPods.dmg") exit "${FIXTURE_DMG_VERIFY_EXIT:-0}";;\n'
             "  *) exit 89;;\nesac",
@@ -434,13 +481,16 @@ class ReleaseScriptTests(FlowFixture):
     def python_tool(self, name, variable):
         path = self.repo / "scripts" / name
         path.write_text(
-            "import os, sys\n"
-            'with open(os.environ["FIXTURE_LOG"], "a") as log:\n'
+            "import json, os, sys\n"
+            f"fixture = json.load(open({str(self.root / 'fixture.json')!r}))\n"
+            'with open(fixture["FIXTURE_ENV_LOG"], "a") as log:\n'
+            f'    log.write("{name}: " + " ".join(sorted(os.environ)) + "\\n")\n'
+            'with open(fixture["FIXTURE_LOG"], "a") as log:\n'
             f'    log.write(" ".join(["{name}", *sys.argv[1:]]) + "\\n")\n'
             "arguments = sys.argv[1:]\n"
             'if "--output" in arguments:\n'
             '    open(arguments[arguments.index("--output") + 1], "x").write("feed\\n")\n'
-            f'sys.exit(int(os.environ.get("{variable}", "0")))\n'
+            f'sys.exit(int(fixture.get("{variable}", "0")))\n'
         )
 
     def release(self, *arguments):
@@ -1150,6 +1200,30 @@ class ReleaseScriptTests(FlowFixture):
         self.assertNotIn("--deep", text)
         self.assertNotIn("--options", text)
 
+    def test_every_child_receives_only_the_minimal_environment(self):
+        dirname = self.tools / "dirname"
+        dirname.write_text(
+            FIXTURE_PREAMBLE.replace("set -eu", "set -u") + 'exec /usr/bin/dirname "$@"\n'
+        )
+        dirname.chmod(0o700)
+        self.environment.update(SECRETS)
+        self.environment["LANG"] = "en_US.UTF-8"
+        result = self.release()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        received = self.received()
+        self.assertEqual(received[0][0], "dirname")
+        self.assertIn("bundle.sh", [tool for tool, _ in received])
+        self.assertGreater(len(received), len(STEPS))
+        for tool, variables in received:
+            with self.subTest(tool=tool):
+                self.assertIn("LANG", variables)
+                own = {"MONOPODS_SIGNING_IDENTITY"} if tool == "bundle.sh" else set()
+                self.assertEqual(variables - MINIMAL - GENERATED, own)
+        evidence = result.stdout + result.stderr + self.log.read_text()
+        evidence += self.environment_log.read_text()
+        for value in SECRETS.values():
+            self.assertNotIn(value, evidence)
+
     def test_output_never_carries_the_private_key_account_listing(self):
         result = self.release()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -1188,8 +1262,13 @@ class ReleaseDocumentTests(unittest.TestCase):
 
     def test_releasing_guide_lists_the_steps_and_the_signing_mode(self):
         text = (SCRIPTS.parent / "docs/RELEASING.md").read_text()
-        self.assertIn("Release builds are signed ad hoc and are not notarized.", text)
-        for step in range(1, 12):
+        self.assertIn(
+            "Release builds are signed with a Developer ID and the hardened runtime, and the "
+            "disk image is notarized and stapled.",
+            text,
+        )
+        self.assertNotIn("signed ad hoc", text)
+        for step in range(0, 12):
             self.assertRegex(text, rf"(?m)^\d+\. \*\*R{step}\*\*")
         for name in (
             "MONOPODS_SPARKLE_ACCOUNT",

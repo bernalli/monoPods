@@ -10,6 +10,7 @@ import shutil
 import shlex
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -75,9 +76,13 @@ class ReleaseTests(unittest.TestCase):
                      '-buildVersion) echo 23C64;;\n*) exit 89;;\nesac')
         self.environment = {key: value for key, value in os.environ.items()
                             if not key.startswith('GIT_')}
+        # bundle.sh keeps HOME but not the GIT_ variables: its git reads the configuration of
+        # this empty home.
+        home = self.root / 'home'
+        home.mkdir()
         self.environment.update(PATH=str(self.tools) + os.pathsep + os.environ['PATH'],
                                 PYTHONDONTWRITEBYTECODE='1', GIT_CONFIG_NOSYSTEM='1',
-                                GIT_CONFIG_GLOBAL=os.devnull)
+                                GIT_CONFIG_GLOBAL=os.devnull, HOME=str(home))
 
     def command(self, name, body):
         path = self.tools / name
@@ -667,6 +672,37 @@ class ReleaseTests(unittest.TestCase):
         result = self.bundle_command()
         self.assertEqual(result.returncode, 91, result.stderr)
         self.assertTrue((self.repo / 'build-reached').exists())
+
+    def test_bundle_children_receive_only_the_minimal_environment(self):
+        self.init_git()
+        record = ('#!{python}\nimport json, os, sys\n'
+                  'with open({log!r}, "a") as log:\n'
+                  '    log.write(json.dumps([sys.argv[0], sorted(os.environ)]) + "\\n")\n')
+        log = self.root / 'environment.log'
+        dirname = self.tools / 'dirname'
+        dirname.write_text(record.format(python=sys.executable, log=str(log))
+                           + 'os.execv("/usr/bin/dirname", ["dirname", *sys.argv[1:]])\n')
+        swift = self.tools / 'swift'
+        swift.write_text(record.format(python=sys.executable, log=str(log)) + 'sys.exit(91)\n')
+        for path in (dirname, swift):
+            path.chmod(0o700)
+        secrets = {'MONOPODS_FIXTURE_TOKEN': 'fake-secret-value-1', 'GH_TOKEN': 'fake-secret-value-2',
+                   'ZZ_ARBITRARY_FIXTURE_NAME': 'fake-secret-value-3', 'A-B': 'fake-secret-value-4'}
+        self.environment.update(secrets)
+        self.environment['MONOPODS_SIGNING_IDENTITY'] = '0123456789ABCDEF0123456789ABCDEF01234567'
+        result = self.bundle_command()
+        self.assertEqual(result.returncode, 91, result.stderr)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual([Path(call[0]).name for call in calls], ['dirname', 'swift'])
+        minimal = {'HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'USER', 'LOGNAME',
+                   'DEVELOPER_DIR'}
+        generated = {'PWD', 'OLDPWD', 'SHLVL', '_', '__CF_USER_TEXT_ENCODING', 'CPATH', 'LIBRARY_PATH',
+                     'MANPATH', 'SDKROOT'}
+        for name, variables in calls:
+            with self.subTest(child=Path(name).name):
+                self.assertEqual(set(variables) - minimal - generated, set())
+        for value in secrets.values():
+            self.assertNotIn(value, result.stdout + result.stderr + log.read_text())
 
     def test_bundle_embeds_no_paths_and_checks_the_built_app(self):
         text = (SCRIPTS / 'bundle.sh').read_text()

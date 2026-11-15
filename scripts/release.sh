@@ -2,6 +2,25 @@
 # Build, sign with Developer ID, notarize, sign with EdDSA and describe one release;
 # steps R0-R11 of docs/RELEASING.md.
 set -euo pipefail
+# A minimal environment before any other command: when a variable outside the list is present,
+# the script starts again through env -i with only the listed ones (shell builtins until then).
+minimal=(HOME PATH TMPDIR LANG LC_ALL LC_CTYPE USER LOGNAME DEVELOPER_DIR MONOPODS_SPARKLE_ACCOUNT MONOPODS_RECEIPT)
+clean=1
+for name in $(compgen -e); do
+  case " ${minimal[*]} PWD SHLVL " in
+    *" $name "*) ;;
+    *) clean=0 ;;
+  esac
+done
+if [[ $clean == 0 ]]; then
+  keep=()
+  for name in "${minimal[@]}"; do
+    [[ -z ${!name+set} ]] || keep+=("$name=${!name}")
+  done
+  exec /usr/bin/env -i ${keep[@]+"${keep[@]}"} "$BASH" "$0" "$@"
+fi
+# The two parameters stay shell variables; no child receives them.
+export -n MONOPODS_SPARKLE_ACCOUNT MONOPODS_RECEIPT
 cd "$(dirname "$0")/.."
 usage() {
   printf 'Usage: scripts/release.sh [--first-release] [--candidate-version N --staging-dir DIR]\n' >&2
@@ -111,7 +130,8 @@ PY
   *) stop 'unreadable certificate list' ;;
 esac
 [[ $identity =~ ^[0-9A-F]{40}$ ]] || stop 'unreadable certificate list'
-export MONOPODS_SIGNING_IDENTITY=$identity
+# Only bundle.sh receives the identity in its environment; codesign gets it as an argument.
+MONOPODS_SIGNING_IDENTITY=$identity
 printf 'Developer ID identity %s…\n' "${identity:0:8}"
 # The preflight shows only that the profile reaches the notary service.
 xcrun notarytool history --keychain-profile notary >/dev/null 2>&1 || stop 'notary preflight failed'
@@ -130,9 +150,11 @@ key=$("$tools/bin/generate_keys" --account "$account" -p) || stop 'cannot read t
 scripts/check.sh
 # R4: the bundle with the production channel.
 if [[ -n $candidate ]]; then
-  scripts/bundle.sh --update-channel Resources/UpdateChannel.json --candidate-version "$candidate"
+  MONOPODS_SIGNING_IDENTITY=$MONOPODS_SIGNING_IDENTITY scripts/bundle.sh \
+    --update-channel Resources/UpdateChannel.json --candidate-version "$candidate"
 else
-  scripts/bundle.sh --update-channel Resources/UpdateChannel.json
+  MONOPODS_SIGNING_IDENTITY=$MONOPODS_SIGNING_IDENTITY scripts/bundle.sh \
+    --update-channel Resources/UpdateChannel.json
 fi
 # R5: Developer ID signatures and the manifest, before any image exists.
 python3 scripts/developer-id-check.py dist/MonoPods.app

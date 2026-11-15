@@ -10,26 +10,23 @@ TECHNICAL = ROOT / 'docs/TECHNICAL.md'
 COMMENT = re.compile(r'<!--.*?-->', re.S)
 NUMBERED = re.compile(r'^\s*[0-9]+[.)]\s')
 LINK = re.compile(r'\]\(([^)\s]+)\)')
-BLUETOOTH_ASKED = ('- macOS may ask again for Bluetooth access after an update, because each '
-                   'version has a new ad hoc signature. If it asks, allow it to keep automatic '
-                   'switching working.')
-BLUETOOTH_KEPT = '- Updates keep the Bluetooth access you already granted.'
-NETWORK_LINE = ('- Apart from update checks and downloads, MonoPods makes no network requests. '
-                'It reads the local system log.')
-README_TITLES = ['Install', 'Updates', 'Requirements', 'Good to know', 'License']
-README_UPDATES = [
-    'Choose Check for Updates… to check for a new version. At first launch MonoPods asks whether '
-    'to check automatically, about once a day; you can change this with Automatic Updates in '
-    'Options. MonoPods downloads an update only when you choose Install and Relaunch.',
-    '- Before downloading, MonoPods must return the sound to stereo or confirm that there is '
-    'nothing to restore. From that confirmation until the new version runs, automatic switching '
-    'is paused.',
-    '- If MonoPods cannot confirm this, it does not install the update and keeps '
-    'working. Quit and reopen MonoPods before you check again.',
-    '- After a crash, MonoPods recovers its saved audio state before it allows updates. During '
-    'installation, other launches of MonoPods stay inactive until the new version is complete '
-    'and verified.',
+README_TITLES = ['Why', 'Install', 'Use', 'Requirements', 'License']
+INSTALL_STEPS = [
+    '1. Download the disk image from the [latest release]'
+    '(https://github.com/bernalli/monoPods/releases/latest).',
+    '2. Open it and drag MonoPods into Applications.',
+    '3. Open MonoPods and allow Bluetooth access when macOS asks.',
 ]
+SIGNED = 'MonoPods is signed with a Developer ID and notarized by Apple.'
+README_UPDATES = (
+    'On first launch it asks whether to check for updates automatically, once a day. You can '
+    'change this later in Options › Automatic Updates. An update is installed only when you '
+    'choose Install and Relaunch.')
+NETWORK_SENTENCE = ('Update checks contact GitHub, which receives your IP address and the app '
+                    'version; MonoPods makes no other network requests.')
+UNSIGNED_PHRASES = ('Open Anyway', 'is not notarized', 'signed ad hoc')
+SYSTEM_LOG = 'MonoPods reads local system-log events for the current Bluetooth audio output.'
+TESTED_SETUP = 'The tested setup reported for this project is AirPods Pro 2 on macOS 27.2.'
 AUTOMATIC_MODE_PHRASES = ('retries at the next launch', 'Enable Automatic Updates', 'Not Now',
                           'by itself, ',
                           'downloads and installs new versions by itself', 'this takes seconds')
@@ -61,9 +58,10 @@ TECHNICAL_UPDATES = [
     'A failed or unconfirmed replacement blocks operation until its outcome is established.',
     'Sparkle starts only in the instance that owns the runtime lock, and only in builds with an '
     'update channel.',
-    'Release builds, including Sparkle\'s helper tools, are signed ad hoc and are not notarized.',
+    'Release builds, including Sparkle\'s helper tools, are signed with a Developer ID and the '
+    'hardened runtime; the disk image is notarized and stapled.',
     'Sparkle installs an update only when its disk image carries a valid EdDSA signature from the '
-    'key embedded in the installed app and the new version\'s ad hoc code signature is valid.',
+    'key embedded in the installed app and the new version\'s code signature is valid.',
 ]
 UNTESTED_ON_INSTALLED_APP = (
     'Deferral of an update when stereo restoration misses its deadline is covered only by '
@@ -122,49 +120,31 @@ class ReadmeTests(unittest.TestCase):
     def test_titles_are_exactly_the_public_sections_in_order(self):
         self.assertEqual(titles(self.lines), README_TITLES)
 
-    def test_install_has_exactly_five_numbered_steps_in_order(self):
+    def test_install_has_exactly_three_numbered_steps_in_order(self):
         steps = [line for line in section(self.lines, 'Install') if NUMBERED.match(line)]
-        self.assertEqual(len(steps), 5)
-        for number, step in enumerate(steps, start=1):
-            self.assertTrue(step.startswith(f'{number}. '), step)
+        self.assertEqual(steps, INSTALL_STEPS)
 
-    def test_install_explains_the_first_launch_of_an_app_without_notarization(self):
-        install = joined(section(self.lines, 'Install'))
-        for phrase in ('Privacy & Security', 'Open Anyway', 'is not notarized by Apple',
-                       'signed ad hoc, not with a Developer ID'):
-            with self.subTest(phrase=phrase):
-                self.assertIn(phrase, install)
+    def test_install_states_the_developer_id_signature_and_notarization(self):
+        self.assertIn(SIGNED, joined(section(self.lines, 'Install')))
 
-    def test_no_signed_or_notarized_experience_is_promised(self):
-        for phrase in ('signed with a Developer ID', 'and notarized by Apple'):
+    def test_no_unsigned_first_launch_is_described(self):
+        for phrase in UNSIGNED_PHRASES:
             with self.subTest(phrase=phrase):
                 self.assertNotIn(phrase, prose(README))
 
-    def test_updates_carry_exactly_one_bluetooth_variant(self):
-        found = [line for line in section(self.lines, 'Updates')
-                 if line in (BLUETOOTH_ASKED, BLUETOOTH_KEPT)]
-        self.assertEqual(len(found), 1, found)
-        self.assertEqual(self.lines.count(BLUETOOTH_ASKED) + self.lines.count(BLUETOOTH_KEPT), 1)
+    def test_install_states_automatic_checks_and_the_manual_install(self):
+        self.assertIn(README_UPDATES, joined(section(self.lines, 'Install')))
 
-    def test_updates_state_manual_checks_stereo_deferral_and_recovery(self):
-        updates = section(self.lines, 'Updates')
-        for line in README_UPDATES:
-            with self.subTest(line=line):
-                self.assertIn(line, updates)
-
-    def test_updates_name_the_command_the_app_shows(self):
+    def test_use_names_the_command_the_app_shows(self):
         source = (ROOT / 'Sources/MonoPodsRuntime/UpdatePolicy.swift').read_text()
         found = re.findall(r'static var check: String \{ Localized\.text\("([^"]+)"\) \}', source)
         self.assertEqual(len(found), 1)
         command = found[0].replace('\\u{2026}', '…')
-        self.assertIn(command, joined(section(self.lines, 'Updates')))
-
-    def test_feed_url_is_the_production_feed(self):
-        feed = runpy.run_path(str(ROOT / 'scripts/bundle-info.py'))['PRODUCTION_FEED_URL']
-        self.assertIn(feed, self.text)
+        self.assertIn(f'- **{command}** looks for a new version at any time.',
+                      section(self.lines, 'Use'))
 
     def test_network_statement_admits_update_checks(self):
-        self.assertIn(NETWORK_LINE, self.lines)
+        self.assertIn(NETWORK_SENTENCE, joined(section(self.lines, 'Install')))
         self.assertIsNone(re.search(r'(^|[.!?]\s+)It makes no network requests\.',
                                     prose(README)))
 
@@ -175,22 +155,25 @@ class ReadmeTests(unittest.TestCase):
     def test_runtime_override_file_is_not_mentioned(self):
         self.assertIsNone(re.search(r'\bRuntimeConfig\b', self.text))
 
-    def test_license_section_names_mit_and_the_sparkle_notice(self):
+    def test_license_section_names_mit_and_the_bundled_notices(self):
         license_lines = section(self.lines, 'License')
         self.assertIn('MonoPods is released under the [MIT License](LICENSE). '
                       f'Copyright © 2026 {copyright_holder()}.', license_lines)
-        self.assertIn('The app includes Sparkle, which has its own license; its notice is in '
-                      '`MonoPods.app/Contents/Resources/Sparkle-LICENSE.txt`.', license_lines)
-        self.assertIn('The app includes Plus Jakarta Sans SemiBold, licensed under SIL OFL 1.1; '
-                      'its notice is in `MonoPods.app/Contents/Resources/PlusJakartaSans-OFL.txt`.',
-                      license_lines)
+        self.assertIn('MonoPods includes Sparkle and the Plus Jakarta Sans font, each under its '
+                      'own license. Their notices are inside the app.', license_lines)
         before = [line for line in self.lines[:self.lines.index('## License')] if line]
-        self.assertEqual(before[-1],
-                         'See [technical notes and building from source](docs/TECHNICAL.md).')
+        self.assertEqual(before[-1], 'Technical notes and building from source: '
+                                     '[docs/TECHNICAL.md](docs/TECHNICAL.md).')
 
-    def test_login_start_is_explained_once_in_install(self):
+    def test_login_start_is_explained_once_in_use(self):
         self.assertEqual(self.text.count('Launch at Login'), 1)
-        self.assertIn('Launch at Login', joined(section(self.lines, 'Install')))
+        self.assertIn('- **Options › Launch at Login** is on by default when MonoPods is in '
+                      'Applications.', section(self.lines, 'Use'))
+
+    def test_system_log_and_tested_setup_moved_to_the_technical_notes(self):
+        for phrase in ('system log', 'Tested only'):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, prose(README))
 
 
 class TechnicalNotesTests(unittest.TestCase):
@@ -227,6 +210,23 @@ class TechnicalNotesTests(unittest.TestCase):
 
     def test_unmeasured_update_between_installed_releases_is_declared(self):
         self.assertIn(UNMEASURED_UPDATE, self.text)
+
+    def test_system_log_and_tested_setup_are_stated(self):
+        audio = joined(section(self.lines, 'Audio and ear detection'))
+        self.assertIn(SYSTEM_LOG, audio)
+        limits = joined(section(self.lines, 'Video playback and limits'))
+        self.assertIn(TESTED_SETUP, limits)
+
+    def test_release_builds_are_not_described_as_ad_hoc(self):
+        for phrase in ('signed ad hoc and are not', 'ad hoc code signature'):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, self.text)
+
+    def test_bundle_names_both_signing_modes(self):
+        self.assertIn('It signs the bundle ad hoc, or with a Developer ID and the hardened runtime '
+                      'when `MONOPODS_SIGNING_IDENTITY` holds the SHA-1 of the certificate, and '
+                      'verifies its signature and `Manifest.json`; it does not notarize or '
+                      'launch it.', self.text)
 
     def test_source_builds_have_no_channel_and_run_on_apple_silicon(self):
         for sentence in ('Builds from source have no update channel, so they never check for '
@@ -270,6 +270,30 @@ class ConsistencyTests(unittest.TestCase):
 
 
 class ReleasingGuideTests(unittest.TestCase):
+    def test_feed_url_is_the_production_feed(self):
+        feed = runpy.run_path(str(ROOT / 'scripts/bundle-info.py'))['PRODUCTION_FEED_URL']
+        self.assertIn(feed, prose(RELEASING))
+
+    def test_signing_and_notarization_steps_are_described(self):
+        lines = visible_lines(RELEASING)
+        for step in ('R0', 'R5', 'R6a', 'R6b', 'R6c', 'R6d'):
+            with self.subTest(step=step):
+                self.assertEqual(len([line for line in lines
+                                      if re.match(rf'^\d+\. \*\*{step}\*\* ', line)]), 1)
+        text = prose(RELEASING)
+        for phrase in ('Release builds are signed with a Developer ID and the hardened runtime, '
+                       'and the disk image is notarized and stapled.',
+                       'one Developer ID Application certificate',
+                       'xcrun notarytool store-credentials notary',
+                       'the signing mode `developer-id`',
+                       'notarytool submit',
+                       'stapler staple',
+                       'source=Notarized Developer ID'):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        self.assertNotIn('ad-hoc', text)
+        self.assertNotIn('adhoc-check.py', text)
+
     def test_release_check_is_the_manual_check_from_an_installed_version(self):
         self.assertIn(RELEASE_CHECK, prose(RELEASING))
 

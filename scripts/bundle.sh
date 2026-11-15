@@ -1,5 +1,24 @@
 #!/bin/bash
 set -euo pipefail
+# A minimal environment before any other command: when a variable outside the list is present,
+# the script starts again through env -i with only the listed ones (shell builtins until then).
+minimal=(HOME PATH TMPDIR LANG LC_ALL LC_CTYPE USER LOGNAME DEVELOPER_DIR MONOPODS_SIGNING_IDENTITY)
+clean=1
+for name in $(compgen -e); do
+  case " ${minimal[*]} PWD SHLVL " in
+    *" $name "*) ;;
+    *) clean=0 ;;
+  esac
+done
+if [[ $clean == 0 ]]; then
+  keep=()
+  for name in "${minimal[@]}"; do
+    [[ -z ${!name+set} ]] || keep+=("$name=${!name}")
+  done
+  exec /usr/bin/env -i ${keep[@]+"${keep[@]}"} "$BASH" "$0" "$@"
+fi
+# The identity stays a shell variable; codesign gets it as an argument.
+export -n MONOPODS_SIGNING_IDENTITY
 cd "$(dirname "$0")/.."
 usage() { printf 'Usage: scripts/bundle.sh [--update-channel FILE [--candidate-version N]]\n' >&2; exit 64; }
 # The channel is injected at bundle time; without it the build has no updater.
