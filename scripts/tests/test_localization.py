@@ -68,7 +68,18 @@ MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@', 'Version Unavailable')
 BUILD_VERSION_KEYS = ('Version %@ (%@)', 'Version Unavailable (Build %@)')
 # Details lines that join a label and a fixed value are whole-sentence keys, so the value agrees
 # with the label's noun; the composed keys and the bare value they used are gone.
-REMOVED_KEYS = ('Automatic Ear Detection: %@', 'None')
+REMOVED_KEYS = (
+    'Automatic Ear Detection: %@', 'None',
+    # The menu shows one reason or remedy under the summary; the old warnings are gone.
+    'Accessibility Mono Audio: %@',
+    'AirPods Max have no ear detection, so MonoPods cannot switch.',
+    'Needs Attention',
+    'System Mono Audio is on; automatic switching is paused.',
+    'The last audio change failed. See Details for the command result.',
+    'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.',
+    'Waiting for MonoPods…',
+    'Waiting for a reliable ear detection connection.',
+)
 # Closed list of reviewed values: (language, table, key) -> value.
 REVIEWED_VALUES = {
     ('it', 'Localizable', 'Automatic Ear Detection: On'): 'Rilevamento automatico dell’orecchio: Attivato',
@@ -105,8 +116,6 @@ REVIEWED_VALUES = {
         'Detecção automática de ouvido: Desconhecida',
     ('pt-BR', 'Localizable', 'Audio Output: None'): 'Saída de áudio: Nenhuma',
     ('pt-BR', 'Localizable', 'Model: None'): 'Modelo: Nenhum',
-    ('ja', 'Localizable', 'AirPods Max have no ear detection, so MonoPods cannot switch.'):
-        'AirPods Maxは自動耳検出に対応していないため、MonoPodsは切り替えられません。',
     ('es', 'Localizable', 'Automatic Ear Detection Off'): 'Detección automática de oreja desactivada',
     ('es', 'Localizable',
      'Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.'):
@@ -116,8 +125,6 @@ REVIEWED_VALUES = {
      'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
         'Si dejas de usar MonoPods, desactiva la detección automática de oreja en los ajustes de '
         'Bluetooth.',
-    ('es', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
-        'Activa la detección automática de oreja en los ajustes de Bluetooth para usar MonoPods.',
     ('fr', 'Localizable', 'Automatic Ear Detection Off'):
         'Détection automatique des oreilles désactivée',
     ('fr', 'Localizable',
@@ -128,18 +135,20 @@ REVIEWED_VALUES = {
      'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
         'Si vous n’utilisez plus MonoPods, désactivez la détection automatique des oreilles dans '
         'les réglages Bluetooth.',
-    ('fr', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
-        'Activez la détection automatique des oreilles dans les réglages Bluetooth pour utiliser '
-        'MonoPods.',
     ('fr', 'Localizable', 'Launch at Login'): 'Ouvrir avec la session',
-    ('de', 'Localizable', 'System Mono Audio is on; automatic switching is paused.'):
-        'Mono-Audio ist systemweit aktiviert; das automatische Umschalten ist pausiert.',
     ('ja', 'Localizable', 'Launch at Login'): 'ログイン時に開く',
     ('zh-Hans', 'Localizable', 'Launch at Login'): '登录时打开',
     ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要跳过更新并继续吗？',
 }
 # es and fr name ear detection as Apple does: «de oreja», «des oreilles».
 EAR_DETECTION_TERMS = {'es': ('de oído', 'de oreja'), 'fr': ('de l’oreille', 'des oreilles')}
+
+# Closed list of texts that name a menu item: the text contains the item's title, identical.
+MENU_REFERENCES = {'See Details for the command result.': 'Details'}
+# The label of the Details line and the reason of Switching Paused name the same setting.
+MONO_AUDIO_LINE = 'Mono Audio: %@'
+MONO_AUDIO_REASON = 'Mono Audio is on in Accessibility settings.'
+LABEL_END = ' \u00a0\u202f:：'
 
 # The only files that may pass a value, not a literal, to Localized.
 NON_LITERAL_FILES = ('MenuPresentation.swift', 'MenuLayout.swift', 'NoticePresenter.swift')
@@ -559,6 +568,27 @@ class LocalizationSourceTests(unittest.TestCase):
                         self.assertNotIn(old, value)
                         if 'detection' in key.lower():
                             self.assertIn(new, value)
+
+    def test_l15_installing_update_is_the_same_in_the_menu_and_the_update_window(self):
+        for language in LANGUAGES:
+            with self.subTest(language=language):
+                self.assertEqual(table(language, 'Localizable')['Installing Update…'],
+                                 table(language, DRIVER_TABLE)['Installing Update…'])
+
+    def test_l17_mono_audio_has_one_name(self):
+        for language in LANGUAGES:
+            localizable = table(language, 'Localizable')
+            with self.subTest(language=language):
+                label = localizable[MONO_AUDIO_LINE].split('%@')[0].rstrip(LABEL_END)
+                self.assertTrue(label)
+                self.assertIn(label.casefold(), localizable[MONO_AUDIO_REASON].casefold())
+
+    def test_l19_a_text_that_names_a_menu_item_uses_its_title(self):
+        for language in LANGUAGES:
+            localizable = table(language, 'Localizable')
+            for text, item in MENU_REFERENCES.items():
+                with self.subTest(language=language, text=text):
+                    self.assertIn(localizable[item], localizable[text])
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

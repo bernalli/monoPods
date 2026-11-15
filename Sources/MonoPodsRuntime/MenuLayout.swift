@@ -94,9 +94,7 @@ public enum MenuLayout {
       MenuRow(id: "monopods", title: MenuTitle.header, symbol: nil, kind: .header)
     ]
     rows += info(menu.summary, id: "summary", symbol: menu.symbol)
-    for (index, warning) in menu.warnings.enumerated() {
-      rows += info(warning, id: "warning.\(index)", symbol: warningSymbol)
-    }
+    if let reason = menu.reason { rows += info(reason, id: "reason") }
     let details = menu.details.enumerated().flatMap { index, detail in
       info(detail, id: "detail.\(index)")
     }

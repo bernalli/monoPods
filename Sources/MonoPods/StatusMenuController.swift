@@ -79,7 +79,7 @@ import MonoPodsRuntime
     MenuState(
       presentation: MenuPresentation(
         snapshot: host.snapshot, routeName: host.routeName, routeModel: host.routeModel,
-        status: host.status, loginCaption: host.loginCaption),
+        status: host.status, waitingForUpdate: host.waitingForUpdate),
       launchAtLogin: host.launchAtLogin, loginCaption: host.loginCaption,
       menuVisible: host.menuVisible,
       versionLabel: information.versionLabel, updates: updates.state,

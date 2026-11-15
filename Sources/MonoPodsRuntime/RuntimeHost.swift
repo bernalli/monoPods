@@ -12,6 +12,12 @@ public enum LoginText {
   public static let unsupervised = "Automatic restart is not active until the next login."
 }
 
+/// Runtime statuses that the menu compares. They stay English: they are also state and logs.
+public enum RuntimeStatus {
+  public static let invalidConfiguration =
+    "Configuration, manifest or runtime evidence is invalid. Automation is blocked."
+}
+
 @MainActor public final class RuntimeHost: ObservableObject {
   @Published public var menuVisible = false
   @Published public private(set) var launchAtLogin = true
@@ -153,7 +159,7 @@ public enum LoginText {
     } catch {
       menuVisible = true
       glyph = .attention
-      status = "Configuration, manifest or runtime evidence is invalid. Automation is blocked."
+      status = RuntimeStatus.invalidConfiguration
       _ = presenter.present(.recoveryBlocked)
     }
   }

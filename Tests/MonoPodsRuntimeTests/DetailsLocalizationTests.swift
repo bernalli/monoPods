@@ -24,7 +24,7 @@ private func details(
   snapshot.count = 1
   return MenuPresentation(
     snapshot: snapshot, routeName: route, routeModel: model, status: "Observing",
-    loginCaption: LoginText.nextLogin
+    waitingForUpdate: false
   ).details
 }
 

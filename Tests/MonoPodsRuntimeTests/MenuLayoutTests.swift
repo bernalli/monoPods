@@ -24,7 +24,7 @@ private func layoutState(
   MenuState(
     presentation: MenuPresentation(
       snapshot: snapshot, routeName: route, routeModel: AirPodsModel.model(productID: 0x2014),
-      status: status, loginCaption: login),
+      status: status, waitingForUpdate: waiting),
     launchAtLogin: launchAtLogin, loginCaption: login,
     menuVisible: menuVisible, versionLabel: "Version 1.0.1", updates: updates,
     waitingForUpdate: waiting)
@@ -97,23 +97,26 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   #expect(after.contains("Audio Output: Speakers"))
 }
 
-@Test func detailsNameTheAccessibilitySettingForSystemMonoAudio() throws {
+@Test func detailsNameMonoAudioOnce() throws {
   var snapshot = layoutSnapshot()
   snapshot.audio = AudioReading(generation: 1, mode: .stereo, status: 0, systemMono: .off)
   let details = try #require(
     submenu(MenuLayout.rows(for: layoutState(snapshot: snapshot)), titled: "Details"))
-  #expect(details.first?.title == "Accessibility Mono Audio: Off")
+  #expect(details.first?.title == "Audio Output: AirPods Pro")
+  #expect(details.contains("Mono Audio: Off"))
+  #expect(!details.contains { $0.title.hasPrefix("Accessibility Mono Audio") })
   #expect(!details.contains { $0.title.hasPrefix("System Mono Audio") })
 }
 
-@Test func longWarningsWrapIntoInformationRowsWithOneSymbol() {
-  let rows = MenuLayout.rows(for: layoutState(login: LoginText.unsupervised))
-  let warning = rows.filter { $0.id.hasPrefix("warning.") }
-  #expect(warning.count >= 2)
-  #expect(warning.allSatisfy { $0.kind == .info })
-  #expect(warning.first?.symbol == "exclamationmark.triangle")
-  #expect(warning.dropFirst().allSatisfy { $0.symbol == nil })
-  #expect(warning.map(\.title).joined(separator: " ") == LoginText.unsupervised)
+@Test func aLongReasonWrapsWithoutASymbol() {
+  var snapshot = layoutSnapshot()
+  snapshot.blocked = true
+  let rows = MenuLayout.rows(for: layoutState(snapshot: snapshot))
+  let reason = rows.filter { $0.id.hasPrefix("reason.") }
+  #expect(reason.count >= 2)
+  #expect(reason.allSatisfy { $0.kind == .info })
+  #expect(reason.allSatisfy { $0.symbol == nil })
+  #expect(reason.map(\.title).joined(separator: " ") == MenuSituation.blocked.reason)
 }
 
 @Test func automaticSwitchingHasNoMenuItemToTurnItOff() {

@@ -1,102 +1,119 @@
 import MonoPodsCore
 
+/// The state that the first row of the menu names. `MenuPresentation` picks the first case that
+/// applies, in the order of the cases.
+public enum MenuSituation: CaseIterable, Sendable {
+  case installingUpdate, blocked, commandFailed, detectionOff, detectionUnavailable, airPodsMax
+  case starting, noOutput, switchingPaused, waitingForEarDetection, noneInEar, oneInEar, twoInEar
+
+  /// The first row.
+  public var summary: String {
+    switch self {
+    case .installingUpdate: return Localized.text("Installing Update\u{2026}")
+    case .blocked: return Localized.text("Automation Blocked")
+    case .commandFailed: return Localized.text("Audio Change Failed")
+    case .detectionOff: return Localized.text("Automatic Ear Detection Off")
+    case .detectionUnavailable: return Localized.text("Ear Detection Unavailable")
+    case .airPodsMax: return Localized.text("AirPods Max Not Supported")
+    case .starting: return Localized.text("Starting\u{2026}")
+    case .noOutput: return Localized.text("No AirPods Audio Output")
+    case .switchingPaused: return Localized.text("Switching Paused")
+    case .waitingForEarDetection: return Localized.text("Waiting for Ear Detection")
+    case .noneInEar: return Localized.text("No AirPods in Ear")
+    case .oneInEar: return Localized.text("One AirPod in Use")
+    case .twoInEar: return Localized.text("Two AirPods in Use")
+    }
+  }
+
+  /// The second row: only the reason or the remedy, never the first row again.
+  public var reason: String? {
+    switch self {
+    case .installingUpdate: return Localized.text("MonoPods restarts when it is done.")
+    case .blocked:
+      return Localized.text("Automatic switching is blocked; recovery evidence needs review.")
+    case .commandFailed: return Localized.text("See Details for the command result.")
+    case .detectionOff: return Localized.text("Turn it on in Bluetooth Settings.")
+    case .detectionUnavailable: return Localized.text("Waiting for a reliable connection.")
+    case .airPodsMax: return Localized.text("AirPods Max have no ear detection.")
+    case .switchingPaused: return Localized.text("Mono Audio is on in Accessibility settings.")
+    case .starting, .noOutput, .waitingForEarDetection, .noneInEar, .oneInEar, .twoInEar:
+      return nil
+    }
+  }
+
+  /// The symbol of the first row. Only three cases show the warning triangle.
+  public var symbol: String {
+    switch self {
+    case .blocked, .commandFailed, .detectionUnavailable: return "exclamationmark.triangle"
+    case .detectionOff, .waitingForEarDetection: return "ear.badge.waveform"
+    case .airPodsMax: return "airpodsmax"
+    case .installingUpdate, .starting: return "hourglass"
+    case .noOutput, .switchingPaused, .noneInEar, .oneInEar, .twoInEar: return "airpodspro"
+    }
+  }
+}
+
 /// User-facing state for the native menu. Diagnostics stay available without implying that the
 /// last successful command is a measurement of the current system audio setting.
 public struct MenuPresentation: Equatable, Sendable {
+  public let situation: MenuSituation
   public let summary: String
+  public let reason: String?
   public let symbol: String
-  public let warnings: [String]
   public let details: [String]
 
   public init(
     snapshot: EngineSnapshot?, routeName: String, routeModel: AirPodsModel?, status: String,
-    loginCaption: String
+    waitingForUpdate: Bool
   ) {
-    let blocked = snapshot?.blocked == true
-    let failed = (snapshot?.lastCompleted?.exitCode ?? 0) != 0
-    let detectionOff = snapshot?.detection == .off
-    let unavailable = snapshot?.operational == true && snapshot?.healthy == false
-    let routineStatuses = [
-      "Starting", "Observing", "Waiting for verified stream transport",
-      "Automation blocked; recovery evidence needs review", "Waiting for the command owner",
-    ]
-    let notice = !status.isEmpty && !routineStatuses.contains(status)
     let outputPresent = !routeName.isEmpty && routeName != "No Bluetooth output"
     // Only a current output has a model; a stale one is ignored.
     let model = outputPresent ? routeModel : nil
-    let withoutEarDetection = model?.earDetection == false
-    var warnings: [String] = []
-    let blockAlreadyReported = [
-      NoticePresenter.message(.recoveryBlocked), NoticePresenter.message(.persistenceFailed),
-    ].contains(status)
-    if blocked && !blockAlreadyReported {
-      warnings.append(
-        Localized.text("Automatic switching is blocked; recovery evidence needs review."))
-    }
-    if notice { warnings.append(Localized.text(status)) }
-    if failed && status != NoticePresenter.message(.commandFailed) {
-      warnings.append(
-        Localized.text("The last audio change failed. See Details for the command result."))
-    }
-    if detectionOff && status != NoticePresenter.message(.detectionDisabled) {
-      warnings.append(
-        Localized.text("Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods."))
-    }
-    if withoutEarDetection {
-      warnings.append(
-        Localized.text("AirPods Max have no ear detection, so MonoPods cannot switch."))
-    }
-    if unavailable {
-      warnings.append(Localized.text("Waiting for a reliable ear detection connection."))
-    }
-    if !loginCaption.isEmpty && loginCaption != LoginText.nextLogin {
-      warnings.append(Localized.text(loginCaption))
-    }
-    if snapshot?.audio?.systemMono == .on {
-      warnings.append(Localized.text("System Mono Audio is on; automatic switching is paused."))
-    }
-    self.warnings = warnings
+    situation = Self.situation(
+      snapshot: snapshot, outputPresent: outputPresent, model: model, status: status,
+      waitingForUpdate: waitingForUpdate)
+    summary = situation.summary
+    reason = situation.reason
+    symbol = situation.symbol
+    details = Self.details(
+      snapshot: snapshot, routeName: routeName, outputPresent: outputPresent, model: model,
+      status: status)
+  }
 
-    if blocked {
-      summary = Localized.text("Automation Blocked")
-      symbol = "exclamationmark.triangle"
-    } else if failed {
-      summary = Localized.text("Audio Change Failed")
-      symbol = "exclamationmark.triangle"
-    } else if notice {
-      summary = Localized.text("Needs Attention")
-      symbol = "exclamationmark.triangle"
-    } else if detectionOff {
-      summary = Localized.text("Automatic Ear Detection Off")
-      symbol = "ear.badge.waveform"
-    } else if unavailable {
-      summary = Localized.text("Ear Detection Unavailable")
-      symbol = "exclamationmark.triangle"
-    } else if withoutEarDetection {
-      // Only AirPods Max lack ear detection. This outranks startup and the ear count: with this
-      // output neither can lead to a switch.
-      summary = Localized.text("AirPods Max Not Supported")
-      symbol = "airpodsmax"
-    } else if snapshot == nil || snapshot?.operational == false {
-      summary =
-        status == "Waiting for the command owner"
-        ? Localized.text("Waiting for MonoPods…") : Localized.text("Starting…")
-      symbol = "hourglass"
-    } else if !outputPresent {
-      summary = Localized.text("No AirPods Audio Output")
-      symbol = "airpodspro"
-    } else if snapshot?.detection == .unknown || snapshot?.count == nil {
-      summary = Localized.text("Waiting for Ear Detection")
-      symbol = "ear.badge.waveform"
-    } else {
-      switch snapshot?.count {
-      case 0: summary = Localized.text("No AirPods in Ear")
-      case 1: summary = Localized.text("One AirPod in Use")
-      case 2: summary = Localized.text("Two AirPods in Use")
-      default: summary = Localized.text("Waiting for Ear Detection")
-      }
-      symbol = "airpodspro"
+  /// The first rule that applies. A notice in `status` never replaces the summary; only a failed
+  /// start, which persists, counts as blocked.
+  private static func situation(
+    snapshot: EngineSnapshot?, outputPresent: Bool, model: AirPodsModel?, status: String,
+    waitingForUpdate: Bool
+  ) -> MenuSituation {
+    if waitingForUpdate { return .installingUpdate }
+    if snapshot?.blocked == true || status == RuntimeStatus.invalidConfiguration {
+      return .blocked
     }
+    if (snapshot?.lastCompleted?.exitCode ?? 0) != 0 { return .commandFailed }
+    if snapshot?.detection == .off { return .detectionOff }
+    if snapshot?.operational == true && snapshot?.healthy == false {
+      return .detectionUnavailable
+    }
+    // Only AirPods Max lack ear detection. This outranks startup and the ear count: with this
+    // output neither can lead to a switch.
+    if model?.earDetection == false { return .airPodsMax }
+    guard let snapshot, snapshot.operational else { return .starting }
+    if !outputPresent { return .noOutput }
+    if snapshot.audio?.systemMono == .on { return .switchingPaused }
+    if snapshot.detection == .unknown { return .waitingForEarDetection }
+    switch snapshot.count {
+    case 0: return .noneInEar
+    case 1: return .oneInEar
+    case 2: return .twoInEar
+    default: return .waitingForEarDetection
+    }
+  }
+
+  private static func details(
+    snapshot: EngineSnapshot?, routeName: String, outputPresent: Bool, model: AirPodsModel?,
+    status: String
+  ) -> [String] {
     // Whole-sentence keys: a fixed value must agree with the noun of its label in each language.
     let detection: String
     switch snapshot?.detection {
@@ -140,15 +157,15 @@ public struct MenuPresentation: Equatable, Sendable {
     } else {
       output = Localized.format("Audio Output: %@", routeName)
     }
-    details = [
-      Localized.format("Accessibility Mono Audio: %@", systemMono),
-      currentAudio,
+    return [
       output,
       outputPresent
         ? Localized.format("Model: %@", model?.name ?? Localized.text("Not Recognized"))
         : Localized.text("Model: None"),
-      Localized.format("AirPods in Use: %@", count),
       detection,
+      Localized.format("AirPods in Use: %@", count),
+      currentAudio,
+      Localized.format("Mono Audio: %@", systemMono),
       Localized.format("Last Command: %@", command),
       Localized.format("Status: %@", Localized.text(status)),
     ]
