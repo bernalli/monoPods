@@ -182,5 +182,41 @@ class SponsorButtonTests(unittest.TestCase):
         self.assertNotIn('.controlSize(', button)
 
 
+class ArtworkTests(unittest.TestCase):
+    """The README cover and the GitHub social preview: design D, rendered by make-artwork.swift."""
+    IMAGES = ROOT / 'docs/images'
+    GENERATOR = ROOT / 'scripts/make-artwork.swift'
+    # GitHub refuses a social preview of 1 MB or more.
+    SOCIAL_LIMIT = 1_000_000
+    TEXTS = ('"MonoPods"', '"Mono with one AirPod."', '"Stereo with two."',
+             '"A small menu bar app that changes your Mac\'s audio for you, as soon as you put an '
+             'AirPod in or take it out."')
+
+    @staticmethod
+    def size(path):
+        data = path.read_bytes()
+        assert data[:8] == b'\x89PNG\r\n\x1a\n' and data[12:16] == b'IHDR', path
+        return int.from_bytes(data[16:20], 'big'), int.from_bytes(data[20:24], 'big')
+
+    def test_cover_and_social_preview_have_the_design_sizes(self):
+        self.assertEqual(self.size(self.IMAGES / 'banner.png'), (2560, 1280))
+        self.assertEqual(self.size(self.IMAGES / 'social-preview.png'), (1280, 640))
+        self.assertLess((self.IMAGES / 'social-preview.png').stat().st_size, self.SOCIAL_LIMIT)
+        self.assertEqual(sorted(path.name for path in self.IMAGES.iterdir()),
+                         ['banner.png', 'social-preview.png'])
+
+    def test_the_generator_draws_the_design_texts_once(self):
+        source = self.GENERATOR.read_text()
+        for text in self.TEXTS:
+            with self.subTest(text=text):
+                self.assertEqual(source.count(text), 1)
+        for value in ('0xFBF3E8', '0x0E2A3D', 'icon_512x512@2x.png', 'PlusJakartaSans-SemiBold'):
+            with self.subTest(value=value):
+                self.assertIn(value, source)
+        for removed in ('howItWorks', 'how-it-works'):
+            with self.subTest(removed=removed):
+                self.assertNotIn(removed, source)
+
+
 if __name__ == '__main__':
     unittest.main()
