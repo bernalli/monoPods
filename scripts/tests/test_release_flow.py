@@ -812,9 +812,12 @@ class ReleaseDocumentTests(unittest.TestCase):
         self.assertIsNone(re.search(r"/Users/|~/", text))
 
     def test_no_apple_signing_identity_in_release_material(self):
+        # D17: the tools and the certificate kind may be named; a concrete identity,
+        # a team identifier or a certificate digest may not.
         pattern = re.compile(
-            r"notarytool|stapler|MONOPODS_SIGN_IDENTITY|MONOPODS_NOTARY_PROFILE|"
-            r"Developer ID Application"
+            r"MONOPODS_SIGN_IDENTITY|MONOPODS_NOTARY_PROFILE|"
+            r"Developer ID Application: [^\n]*\([A-Z0-9]{10}\)|"
+            r"TeamIdentifier=[A-Z0-9]{10}|(?<![0-9A-Fa-f])[0-9A-F]{40}(?![0-9A-Fa-f])"
         )
         root = SCRIPTS.parent
         for folder in ("scripts", "docs", "Resources"):

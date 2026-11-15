@@ -134,15 +134,15 @@ class ReleaseTests(unittest.TestCase):
         ditto = position('ditto "$framework_src" "' + FRAMEWORK + '"')
         xpc = position("'Versions/B/XPCServices'")
         license_copy = position('Contents/Resources/Sparkle-LICENSE.txt')
-        autoupdate = position('codesign --force --sign - "' + FRAMEWORK + '/Versions/B/Autoupdate"')
-        updater = position('codesign --force --sign - "' + FRAMEWORK + '/Versions/B/Updater.app"')
-        framework = position('codesign --force --sign - "' + FRAMEWORK + '"')
-        signs = [index for index, line in enumerate(lines)
-                 if line.startswith('codesign --force --sign - "$app"')]
+        autoupdate = position('"${sign[@]}" "' + FRAMEWORK + '/Versions/B/Autoupdate"')
+        updater = position('"${sign[@]}" "' + FRAMEWORK + '/Versions/B/Updater.app"')
+        framework = position('"${sign[@]}" "' + FRAMEWORK + '"')
+        signs = [index for index, line in enumerate(lines) if line == '"${sign[@]}" "$app"']
         verify = position('codesign --verify --deep --strict "$app"')
         adhoc = position('python3 scripts/adhoc-check.py "$app"')
         manifest = position('python3 scripts/manifest.py write "$app"')
         self.assertEqual(len(signs), 2)
+        self.assertEqual(len([line for line in lines if '"${sign[@]}"' in line]), 5)
         self.assertLess(ditto, xpc)
         self.assertLess(xpc, autoupdate)
         self.assertLess(autoupdate, updater)
@@ -156,15 +156,48 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("'XPCServices'", text)
         self.assertIn(SPARKLE_LICENSE_SHA256, text)
         for line in lines:
-            if line.lstrip().startswith('codesign '):
+            if 'codesign' in line or '"${sign[@]}"' in line:
                 with self.subTest(line=line):
-                    words = shlex.split(line.strip())
-                    for forbidden in ('--options', '-o', '--timestamp', '--entitlements'):
-                        self.assertNotIn(forbidden, words)
-                    if '--sign' in words:
-                        self.assertEqual(words[words.index('--sign') + 1], '-')
+                    words = shlex.split(line.strip().removeprefix('sign=(').removesuffix(')'))
+                    self.assertNotIn('--entitlements', words)
                     if '--deep' in words:
-                        self.assertIn('--verify', words)
+                        self.assertEqual(line, 'codesign --verify --deep --strict "$app"')
+                    if '--sign' in words or '"${sign[@]}"' in line:
+                        self.assertNotIn('--deep', words)
+
+    def test_bundle_chooses_the_signing_arrays_from_the_identity(self):
+        lines = (SCRIPTS / 'bundle.sh').read_text().splitlines()
+        block = ['if [[ -n ${MONOPODS_SIGNING_IDENTITY:-} ]]; then',
+                 '  [[ $MONOPODS_SIGNING_IDENTITY =~ ^[0-9A-F]{40}$ ]] || usage',
+                 '  sign=(codesign --force --options runtime --timestamp --sign '
+                 '"$MONOPODS_SIGNING_IDENTITY")',
+                 '  mode=developer-id',
+                 'else',
+                 '  sign=(codesign --force --sign -)',
+                 '  mode=adhoc',
+                 'fi']
+        starts = [index for index in range(len(lines)) if lines[index:index + len(block)] == block]
+        self.assertEqual(len(starts), 1)
+        self.assertEqual(len([line for line in lines if line.lstrip().startswith('sign=')]), 2)
+        self.assertEqual(len([line for line in lines if line.lstrip().startswith('mode=')]), 2)
+        self.assertLess(starts[0], lines.index('source_commit=$(source_identity)'))
+        self.assertNotIn('codesign --force', '\n'.join(lines[:starts[0]] + lines[starts[0] + 8:]))
+
+    def test_bundle_checks_the_signature_of_the_chosen_mode(self):
+        lines = (SCRIPTS / 'bundle.sh').read_text().splitlines()
+        block = ['case $mode in',
+                 '  adhoc) python3 scripts/adhoc-check.py "$app" ;;',
+                 '  developer-id) python3 scripts/developer-id-check.py "$app" ;;',
+                 '  *) exit 1 ;;',
+                 'esac']
+        starts = [index for index in range(len(lines)) if lines[index:index + len(block)] == block]
+        self.assertEqual(len(starts), 1)
+        self.assertEqual(lines[starts[0] - 1], 'python3 scripts/manifest.py verify "$app" "$source_commit"')
+        self.assertEqual(lines[starts[0] - 2], 'codesign --verify --deep --strict "$app"')
+        self.assertEqual(sum('adhoc-check.py' in line for line in lines), 1)
+        self.assertEqual(sum('developer-id-check.py' in line for line in lines), 1)
+        self.assertEqual(lines[-1], "printf 'Built %s with %s signing; no runtime or login item "
+                                    "was started.\\n' \"$app\" \"$mode\"")
 
     def test_sparkle_license_is_the_pinned_text(self):
         data = (SCRIPTS.parent / 'ThirdParty/Sparkle-LICENSE.txt').read_bytes()
@@ -614,6 +647,26 @@ class ReleaseTests(unittest.TestCase):
                 result = self.bundle_command(*arguments)
                 self.assertEqual(result.returncode, 64, result.stderr)
                 self.assertFalse((self.repo / 'build-reached').exists())
+
+    def test_bundle_refuses_a_malformed_signing_identity_before_build(self):
+        self.init_git()
+        for identity in ('0123456789abcdef0123456789abcdef01234567', '0123456789ABCDEF',
+                         '0123456789ABCDEF0123456789ABCDEF012345678',
+                         '0123456789ABCDEF0123456789ABCDEF0123456G',
+                         'Developer ID Application: Example Developer (ABCDE12345)',
+                         ' 0123456789ABCDEF0123456789ABCDEF01234567'):
+            with self.subTest(identity=identity):
+                self.environment['MONOPODS_SIGNING_IDENTITY'] = identity
+                result = self.bundle_command()
+                self.assertEqual(result.returncode, 64, result.stderr)
+                self.assertFalse((self.repo / 'build-reached').exists())
+
+    def test_bundle_with_a_well_formed_identity_reaches_the_build(self):
+        self.init_git()
+        self.environment['MONOPODS_SIGNING_IDENTITY'] = '0123456789ABCDEF0123456789ABCDEF01234567'
+        result = self.bundle_command()
+        self.assertEqual(result.returncode, 91, result.stderr)
+        self.assertTrue((self.repo / 'build-reached').exists())
 
     def test_bundle_embeds_no_paths_and_checks_the_built_app(self):
         text = (SCRIPTS / 'bundle.sh').read_text()
