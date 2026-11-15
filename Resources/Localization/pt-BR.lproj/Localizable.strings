@@ -10,9 +10,12 @@
 "Applies from the next login." = "Será aplicado no próximo início de sessão.";
 "Audio Change Failed" = "Falha na alteração do áudio";
 "Audio Output: %@" = "Saída de áudio: %@";
+"Audio Output: None" = "Saída de áudio: Nenhuma";
 "Automatic Ear Detection Off" = "Detecção automática de ouvido desativada";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "A detecção automática de ouvido está desativada. Ative-a nos ajustes de Bluetooth para usar o MonoPods.";
-"Automatic Ear Detection: %@" = "Detecção automática de ouvido: %@";
+"Automatic Ear Detection: Off" = "Detecção automática de ouvido: Desativada";
+"Automatic Ear Detection: On" = "Detecção automática de ouvido: Ativada";
+"Automatic Ear Detection: Unknown" = "Detecção automática de ouvido: Desconhecida";
 "Automatic Updates" = "Atualizações Automáticas";
 "Automatic restart is not active until the next login." = "O reinício automático só ficará ativo no próximo início de sessão.";
 "Automatic switching is blocked; recovery evidence needs review." = "A alternância automática está bloqueada; os dados de recuperação precisam ser revisados.";
@@ -35,6 +38,7 @@
 "Last Command: %@" = "Último comando: %@";
 "Launch at Login" = "Abrir ao iniciar sessão";
 "Model: %@" = "Modelo: %@";
+"Model: None" = "Modelo: Nenhum";
 "Mono" = "Mono";
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "O MonoPods não confirmou a volta para estéreo. O mono pode continuar ativado. Reabra o MonoPods para tentar novamente.";
 "MonoPods restarted after an error or an incomplete quit." = "O MonoPods foi reiniciado após um erro ou um encerramento incompleto.";
@@ -43,7 +47,6 @@
 "No AirPods Audio Output" = "Nenhuma saída de áudio AirPods";
 "No AirPods in Ear" = "Nenhum AirPod no ouvido";
 "No Bluetooth output" = "Nenhuma saída Bluetooth";
-"None" = "Nenhum";
 "None Yet" = "Nenhum ainda";
 "Not Recognized" = "Não reconhecido";
 "Observing" = "Observando";

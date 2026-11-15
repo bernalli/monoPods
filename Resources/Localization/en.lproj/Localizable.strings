@@ -10,9 +10,12 @@
 "Applies from the next login." = "Applies from the next login.";
 "Audio Change Failed" = "Audio Change Failed";
 "Audio Output: %@" = "Audio Output: %@";
+"Audio Output: None" = "Audio Output: None";
 "Automatic Ear Detection Off" = "Automatic Ear Detection Off";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.";
-"Automatic Ear Detection: %@" = "Automatic Ear Detection: %@";
+"Automatic Ear Detection: Off" = "Automatic Ear Detection: Off";
+"Automatic Ear Detection: On" = "Automatic Ear Detection: On";
+"Automatic Ear Detection: Unknown" = "Automatic Ear Detection: Unknown";
 "Automatic Updates" = "Automatic Updates";
 "Automatic restart is not active until the next login." = "Automatic restart is not active until the next login.";
 "Automatic switching is blocked; recovery evidence needs review." = "Automatic switching is blocked; recovery evidence needs review.";
@@ -35,6 +38,7 @@
 "Last Command: %@" = "Last Command: %@";
 "Launch at Login" = "Launch at Login";
 "Model: %@" = "Model: %@";
+"Model: None" = "Model: None";
 "Mono" = "Mono";
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again.";
 "MonoPods restarted after an error or an incomplete quit." = "MonoPods restarted after an error or an incomplete quit.";
@@ -43,7 +47,6 @@
 "No AirPods Audio Output" = "No AirPods Audio Output";
 "No AirPods in Ear" = "No AirPods in Ear";
 "No Bluetooth output" = "No Bluetooth output";
-"None" = "None";
 "None Yet" = "None Yet";
 "Not Recognized" = "Not Recognized";
 "Observing" = "Observing";

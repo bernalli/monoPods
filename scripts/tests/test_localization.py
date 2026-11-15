@@ -66,6 +66,81 @@ ABOUT_ONLY_KEYS = ('Buy Me a Coffee', 'View %@ on GitHub')
 MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@', 'Version Unavailable')
 # The version lines never show the build number, so no table has a key for it.
 BUILD_VERSION_KEYS = ('Version %@ (%@)', 'Version Unavailable (Build %@)')
+# Details lines that join a label and a fixed value are whole-sentence keys, so the value agrees
+# with the label's noun; the composed keys and the bare value they used are gone.
+REMOVED_KEYS = ('Automatic Ear Detection: %@', 'None')
+# Closed list of reviewed values: (language, table, key) -> value.
+REVIEWED_VALUES = {
+    ('it', 'Localizable', 'Automatic Ear Detection: On'): 'Rilevamento automatico dell’orecchio: Attivato',
+    ('it', 'Localizable', 'Automatic Ear Detection: Off'):
+        'Rilevamento automatico dell’orecchio: Disattivato',
+    ('it', 'Localizable', 'Automatic Ear Detection: Unknown'):
+        'Rilevamento automatico dell’orecchio: Sconosciuto',
+    ('it', 'Localizable', 'Audio Output: None'): 'Uscita audio: Nessuna',
+    ('it', 'Localizable', 'Model: None'): 'Modello: Nessuno',
+    ('es', 'Localizable', 'Automatic Ear Detection: On'): 'Detección automática de oreja: Activada',
+    ('es', 'Localizable', 'Automatic Ear Detection: Off'):
+        'Detección automática de oreja: Desactivada',
+    ('es', 'Localizable', 'Automatic Ear Detection: Unknown'):
+        'Detección automática de oreja: Desconocida',
+    ('es', 'Localizable', 'Audio Output: None'): 'Salida de audio: Ninguna',
+    ('es', 'Localizable', 'Model: None'): 'Modelo: Ninguno',
+    ('fr', 'Localizable', 'Automatic Ear Detection: On'):
+        'Détection automatique des oreilles : Activée',
+    ('fr', 'Localizable', 'Automatic Ear Detection: Off'):
+        'Détection automatique des oreilles : Désactivée',
+    ('fr', 'Localizable', 'Automatic Ear Detection: Unknown'):
+        'Détection automatique des oreilles : Inconnue',
+    ('fr', 'Localizable', 'Audio Output: None'): 'Sortie audio : Aucune',
+    ('fr', 'Localizable', 'Model: None'): 'Modèle : Aucun',
+    ('de', 'Localizable', 'Automatic Ear Detection: On'): 'Automatische Ohrerkennung: Ein',
+    ('de', 'Localizable', 'Automatic Ear Detection: Off'): 'Automatische Ohrerkennung: Aus',
+    ('de', 'Localizable', 'Automatic Ear Detection: Unknown'): 'Automatische Ohrerkennung: Unbekannt',
+    ('de', 'Localizable', 'Audio Output: None'): 'Audioausgang: Keiner',
+    ('de', 'Localizable', 'Model: None'): 'Modell: Keines',
+    ('pt-BR', 'Localizable', 'Automatic Ear Detection: On'): 'Detecção automática de ouvido: Ativada',
+    ('pt-BR', 'Localizable', 'Automatic Ear Detection: Off'):
+        'Detecção automática de ouvido: Desativada',
+    ('pt-BR', 'Localizable', 'Automatic Ear Detection: Unknown'):
+        'Detecção automática de ouvido: Desconhecida',
+    ('pt-BR', 'Localizable', 'Audio Output: None'): 'Saída de áudio: Nenhuma',
+    ('pt-BR', 'Localizable', 'Model: None'): 'Modelo: Nenhum',
+    ('ja', 'Localizable', 'AirPods Max have no ear detection, so MonoPods cannot switch.'):
+        'AirPods Maxは自動耳検出に対応していないため、MonoPodsは切り替えられません。',
+    ('es', 'Localizable', 'Automatic Ear Detection Off'): 'Detección automática de oreja desactivada',
+    ('es', 'Localizable',
+     'Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.'):
+        'La detección automática de oreja está desactivada. Actívala en los ajustes de Bluetooth '
+        'para usar MonoPods.',
+    ('es', 'Localizable',
+     'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
+        'Si dejas de usar MonoPods, desactiva la detección automática de oreja en los ajustes de '
+        'Bluetooth.',
+    ('es', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
+        'Activa la detección automática de oreja en los ajustes de Bluetooth para usar MonoPods.',
+    ('fr', 'Localizable', 'Automatic Ear Detection Off'):
+        'Détection automatique des oreilles désactivée',
+    ('fr', 'Localizable',
+     'Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.'):
+        'La détection automatique des oreilles est désactivée. Activez-la dans les réglages '
+        'Bluetooth pour utiliser MonoPods.',
+    ('fr', 'Localizable',
+     'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
+        'Si vous n’utilisez plus MonoPods, désactivez la détection automatique des oreilles dans '
+        'les réglages Bluetooth.',
+    ('fr', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
+        'Activez la détection automatique des oreilles dans les réglages Bluetooth pour utiliser '
+        'MonoPods.',
+    ('fr', 'Localizable', 'Launch at Login'): 'Ouvrir avec la session',
+    ('de', 'Localizable', 'System Mono Audio is on; automatic switching is paused.'):
+        'Mono-Audio ist systemweit aktiviert; das automatische Umschalten ist pausiert.',
+    ('ja', 'Localizable', 'Launch at Login'): 'ログイン時に開く',
+    ('zh-Hans', 'Localizable', 'Launch at Login'): '登录时打开',
+    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要跳过更新并继续吗？',
+}
+# es and fr name ear detection as Apple does: «de oreja», «des oreilles».
+EAR_DETECTION_TERMS = {'es': ('de oído', 'de oreja'), 'fr': ('de l’oreille', 'des oreilles')}
+
 # The only files that may pass a value, not a literal, to Localized.
 NON_LITERAL_FILES = ('MenuPresentation.swift', 'MenuLayout.swift', 'NoticePresenter.swift')
 
@@ -463,6 +538,27 @@ class LocalizationSourceTests(unittest.TestCase):
             for key in BUILD_VERSION_KEYS:
                 with self.subTest(language=language, key=key):
                     self.assertNotIn(key, localizable)
+
+    def test_l12_reviewed_values_and_removed_keys(self):
+        for (language, name, key), value in sorted(REVIEWED_VALUES.items()):
+            with self.subTest(language=language, key=key):
+                self.assertEqual(table(language, name).get(key), value)
+        for language in LANGUAGES:
+            for name in TABLES:
+                for key in REMOVED_KEYS:
+                    with self.subTest(language=language, table=name, key=key):
+                        self.assertNotIn(key, table(language, name))
+
+    def test_l13_ear_detection_has_one_name_in_spanish_and_french(self):
+        for language, (old, new) in EAR_DETECTION_TERMS.items():
+            for name in TABLES:
+                for key, value in table(language, name).items():
+                    if 'detection' not in key.lower() and 'Usage' not in key:
+                        continue
+                    with self.subTest(language=language, key=key):
+                        self.assertNotIn(old, value)
+                        if 'detection' in key.lower():
+                            self.assertIn(new, value)
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

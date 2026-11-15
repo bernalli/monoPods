@@ -97,11 +97,12 @@ public struct MenuPresentation: Equatable, Sendable {
       }
       symbol = "airpodspro"
     }
+    // Whole-sentence keys: a fixed value must agree with the noun of its label in each language.
     let detection: String
     switch snapshot?.detection {
-    case .on: detection = Localized.text("On")
-    case .off: detection = Localized.text("Off")
-    default: detection = Localized.text("Unknown")
+    case .on: detection = Localized.text("Automatic Ear Detection: On")
+    case .off: detection = Localized.text("Automatic Ear Detection: Off")
+    default: detection = Localized.text("Automatic Ear Detection: Unknown")
     }
     let command: String
     if let receipt = snapshot?.lastCompleted {
@@ -133,21 +134,21 @@ public struct MenuPresentation: Equatable, Sendable {
       } ?? Localized.format("Current Audio: %@", Localized.text("Unknown"))
     let output: String
     if routeName.isEmpty {
-      output = Localized.text("None")
+      output = Localized.text("Audio Output: None")
     } else if routeName == "No Bluetooth output" {
-      output = Localized.text(routeName)
+      output = Localized.format("Audio Output: %@", Localized.text(routeName))
     } else {
-      output = routeName
+      output = Localized.format("Audio Output: %@", routeName)
     }
     details = [
       Localized.format("Accessibility Mono Audio: %@", systemMono),
       currentAudio,
-      Localized.format("Audio Output: %@", output),
-      Localized.format(
-        "Model: %@",
-        outputPresent ? model?.name ?? Localized.text("Not Recognized") : Localized.text("None")),
+      output,
+      outputPresent
+        ? Localized.format("Model: %@", model?.name ?? Localized.text("Not Recognized"))
+        : Localized.text("Model: None"),
       Localized.format("AirPods in Use: %@", count),
-      Localized.format("Automatic Ear Detection: %@", detection),
+      detection,
       Localized.format("Last Command: %@", command),
       Localized.format("Status: %@", Localized.text(status)),
     ]

@@ -10,9 +10,12 @@
 "Applies from the next login." = "将从下次登录起生效。";
 "Audio Change Failed" = "音频切换失败";
 "Audio Output: %@" = "音频输出：%@";
+"Audio Output: None" = "音频输出：无";
 "Automatic Ear Detection Off" = "自动入耳检测已关闭";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "自动入耳检测已关闭。请在蓝牙设置中将其打开以使用 MonoPods。";
-"Automatic Ear Detection: %@" = "自动入耳检测：%@";
+"Automatic Ear Detection: Off" = "自动入耳检测：关闭";
+"Automatic Ear Detection: On" = "自动入耳检测：开启";
+"Automatic Ear Detection: Unknown" = "自动入耳检测：未知";
 "Automatic Updates" = "自动更新";
 "Automatic restart is not active until the next login." = "自动重启要到下次登录后才会生效。";
 "Automatic switching is blocked; recovery evidence needs review." = "自动切换已被阻止；需要检查恢复数据。";
@@ -33,8 +36,9 @@
 "Hide Menu Bar Icon" = "隐藏菜单栏图标";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "如果不再使用 MonoPods，请在蓝牙设置中关闭自动入耳检测。";
 "Last Command: %@" = "上一条命令：%@";
-"Launch at Login" = "登录时启动";
+"Launch at Login" = "登录时打开";
 "Model: %@" = "型号：%@";
+"Model: None" = "型号：无";
 "Mono" = "单声道";
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "MonoPods 未能确认已恢复立体声。单声道可能仍处于开启状态。请重新打开 MonoPods 再试一次。";
 "MonoPods restarted after an error or an incomplete quit." = "MonoPods 在出错或未完全退出后已重新启动。";
@@ -43,7 +47,6 @@
 "No AirPods Audio Output" = "无 AirPods 音频输出";
 "No AirPods in Ear" = "未佩戴 AirPods";
 "No Bluetooth output" = "无蓝牙输出";
-"None" = "无";
 "None Yet" = "暂无";
 "Not Recognized" = "无法识别";
 "Observing" = "正在观察";
@@ -56,7 +59,7 @@
 "Quit %@" = "退出 %@";
 "Report an Issue…" = "报告问题…";
 "Resume" = "继续";
-"Resume Without Updating?" = "要不更新而继续吗？";
+"Resume Without Updating?" = "要跳过更新并继续吗？";
 "Resume Without Updating…" = "不更新并继续…";
 "Runtime evidence could not be saved. Automation is blocked." = "无法保存运行时数据。自动化已被阻止。";
 "Starting" = "正在启动";
