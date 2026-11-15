@@ -166,7 +166,7 @@ private enum UpdateRefusal: Error { case notAllowed, preparing }
 }
 
 extension UpdateController {
-  /// The Automatic Updates switch in the menu.
+  /// The Check for Updates Automatically switch in the menu.
   func setAutomaticChecks(_ enabled: Bool) { coordinator?.setAutomaticChecks(enabled) }
 }
 

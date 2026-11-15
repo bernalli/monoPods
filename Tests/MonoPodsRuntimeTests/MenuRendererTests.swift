@@ -70,7 +70,8 @@ private let runsOnMacOS27OrLater = InfoRowStyle.system == .secondaryView
     row("summary.0", "One AirPod in Use", .info, symbol: "airpodspro"),
     row("warning.0.1", "login.", .info),
     row(
-      "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
+      "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true, enabled: true),
+      symbol: "power"),
     row("separator", "", .separator),
     row("version.0", "Version 1.0.1 (11)", .info),
   ]
@@ -81,7 +82,8 @@ private let runsOnMacOS27OrLater = InfoRowStyle.system == .secondaryView
   #expect(layouts[2] == InfoRowLayout(symbolInset: 30, textInset: 52.5))
   #expect(layouts[5] == InfoRowLayout(symbolInset: 30, textInset: 30))
   var unchecked = rows
-  unchecked[3] = row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: false))
+  unchecked[3] = row(
+    "login", "Launch at Login", .toggle(.launchAtLogin, isOn: false, enabled: true))
   unchecked[1] = row("summary.0", "One AirPod in Use", .info)
   #expect(renderer.infoLayouts(for: unchecked)[1] == InfoRowLayout(symbolInset: 17, textInset: 17))
 }
@@ -111,7 +113,9 @@ func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
   #expect(layouts[2] == InfoRowLayout(symbolInset: 14, textInset: 34))
   #expect(layouts[5] == InfoRowLayout(symbolInset: 14, textInset: 14))
   let options = [
-    row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
+    row(
+      "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true, enabled: true),
+      symbol: "power"),
     row("login.caption.0", "Applies from the next login.", .info),
   ]
   #expect(renderer.infoLayouts(for: options)[1] == InfoRowLayout(symbolInset: 28, textInset: 48))
@@ -169,7 +173,8 @@ func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
   renderer.apply(
     [
       row(
-        "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true), symbol: "power"),
+        "login", "Launch at Login", .toggle(.launchAtLogin, isOn: true, enabled: true),
+        symbol: "power"),
       row("check", "Check for Updates\u{2026}", .action(.checkForUpdates, enabled: false, key: "")),
       row("report", "Report an Issue\u{2026}", .action(.reportIssue, enabled: true, key: "")),
       row("quit", "Quit MonoPods", .action(.quit, enabled: true, key: "q")),
@@ -195,13 +200,31 @@ func informationRowsUseTheTitlePositionsOfAnOpenMacOS27Menu() {
   #expect(performed == [.launchAtLogin, .reportIssue, .quit])
 }
 
+@MainActor @Test func aDisabledToggleKeepsItsCheckmarkAndCannotBeChosen() throws {
+  let renderer = MenuRenderer { _ in }
+  let menu = NSMenu()
+  renderer.apply(
+    [row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: true, enabled: false))],
+    to: menu)
+  let item = try #require(menu.items.first)
+  #expect(!item.isEnabled)
+  #expect(item.state == .on)
+  renderer.apply(
+    [row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: true, enabled: true))],
+    to: menu)
+  #expect(menu.items.first === item)
+  #expect(item.isEnabled)
+  #expect(item.state == .on)
+}
+
 @MainActor @Test func newStateUpdatesTheItemsOfAnOpenMenuInPlace() throws {
   let renderer = MenuRenderer(infoStyle: .secondaryView) { _ in }
   let menu = NSMenu()
   func rows(count: Int, output: String, warning: Bool) -> [MenuRow] {
     var rows = [row("monopods", "MonoPods", .header)]
     if warning { rows.append(row("warning.0.0", "Waiting for ear detection.", .info)) }
-    rows.append(row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: count > 0)))
+    rows.append(
+      row("login", "Launch at Login", .toggle(.launchAtLogin, isOn: count > 0, enabled: true)))
     rows.append(
       row(
         "details", "Details",

@@ -16,16 +16,17 @@ private func menuSnapshot() -> EngineSnapshot {
 private func presentation(
   _ snapshot: EngineSnapshot? = menuSnapshot(), route: String = "AirPods Pro",
   status: String = "Observing",
-  login: String = LoginText.nextLogin, model: AirPodsModel? = AirPodsModel.model(productID: 0x2014)
+  model: AirPodsModel? = AirPodsModel.model(productID: 0x2014), waiting: Bool = false
 ) -> MenuPresentation {
   MenuPresentation(
-    snapshot: snapshot, routeName: route, routeModel: model, status: status, loginCaption: login)
+    snapshot: snapshot, routeName: route, routeModel: model, status: status,
+    waitingForUpdate: waiting)
 }
 
 @Test func healthyMenuKeepsDiagnosticsInDetails() {
   let menu = presentation()
   #expect(menu.summary == "One AirPod in Use")
-  #expect(menu.warnings.isEmpty)
+  #expect(menu.reason == nil)
   #expect(menu.details.contains("Last Command: Mono (Exit 0)"))
   #expect(menu.details.contains("Automatic Ear Detection: On"))
   #expect(menu.details.contains("AirPods in Use: 1"))
@@ -37,7 +38,7 @@ private func presentation(
   snapshot.lastCompleted = nil
   let menu = presentation(snapshot)
   #expect(menu.summary == "One AirPod in Use")
-  #expect(menu.warnings.isEmpty)
+  #expect(menu.reason == nil)
   #expect(menu.details.contains("Last Command: None Yet"))
   #expect(presentation(nil, status: "Starting").details.contains("Last Command: None Yet"))
 }
@@ -47,24 +48,24 @@ private func presentation(
   snapshot.detection = .off
   let menu = presentation(snapshot)
   #expect(menu.summary == "Automatic Ear Detection Off")
-  #expect(menu.warnings.contains { $0.contains("Bluetooth Settings") })
+  #expect(menu.reason == "Turn it on in Bluetooth Settings.")
 }
 
 @Test func noOutputDoesNotShowStaleEarCountAsCurrent() {
   let menu = presentation(route: "No Bluetooth output")
   #expect(menu.summary == "No AirPods Audio Output")
-  #expect(menu.warnings.isEmpty)
+  #expect(menu.reason == nil)
 }
 
-@Test func blockedEngineWinsWithoutHidingOtherWarnings() {
+@Test func blockedEngineWinsAndShowsOnlyItsReason() {
   var snapshot = menuSnapshot()
   snapshot.blocked = true
   snapshot.detection = .off
-  let menu = presentation(snapshot, login: LoginText.failed)
+  snapshot.lastCompleted = CommandReceipt(id: 2, target: .stereo, exitCode: 7)
+  let menu = presentation(snapshot)
   #expect(menu.summary == "Automation Blocked")
-  #expect(menu.warnings.contains { $0.contains("recovery") })
-  #expect(menu.warnings.contains { $0.contains("Bluetooth Settings") })
-  #expect(menu.warnings.contains(LoginText.failed))
+  #expect(menu.reason == MenuSituation.blocked.reason)
+  #expect(menu.symbol == "exclamationmark.triangle")
 }
 
 @Test func failedCommandIsShownAsTheSummary() {
@@ -73,7 +74,7 @@ private func presentation(
   let menu = presentation(snapshot)
   #expect(menu.summary == "Audio Change Failed")
   #expect(menu.details.contains("Last Command: Stereo (Exit 7)"))
-  #expect(!menu.warnings.isEmpty)
+  #expect(menu.reason == "See Details for the command result.")
 }
 
 @Test func unhealthyStreamIsNotPresentedAsHealthyOrJustOff() {
@@ -81,15 +82,18 @@ private func presentation(
   snapshot.healthy = false
   let menu = presentation(snapshot)
   #expect(menu.summary == "Ear Detection Unavailable")
-  #expect(!menu.warnings.isEmpty)
+  #expect(menu.reason == "Waiting for a reliable connection.")
 }
 
 @Test func startupAndConfigurationFailureWorkWithoutSnapshot() {
   #expect(presentation(nil, status: "Starting").summary == "Starting…")
+  #expect(presentation(nil, status: "Starting").reason == nil)
   let failure = "Configuration, manifest or runtime evidence is invalid. Automation is blocked."
+  #expect(failure == RuntimeStatus.invalidConfiguration)
   let menu = presentation(nil, status: failure)
-  #expect(menu.summary == "Needs Attention")
-  #expect(menu.warnings.contains(failure))
+  #expect(menu.summary == "Automation Blocked")
+  #expect(menu.reason == MenuSituation.blocked.reason)
+  #expect(menu.details.contains("Status: \(failure)"))
 }
 
 @Test func earCountsAndUnknownDetectionHaveDistinctStatuses() {
@@ -106,69 +110,56 @@ private func presentation(
   #expect(presentation(snapshot).summary == "Waiting for Ear Detection")
 }
 
-@Test func allLoginWarningsRemainVisibleAtFirstLevel() {
-  for caption in [LoginText.failed, LoginText.notInstalled, LoginText.unsupervised] {
-    #expect(presentation(login: caption).warnings.contains(caption))
-  }
-}
-
 @Test func longNoticesAndDeviceNamesArePreservedAndWrappable() {
   let notice =
     "An audio command failed repeatedly. Automatic attempts for this target are blocked until the target or connection changes."
   let route = String(repeating: "Personal AirPods ", count: 12).trimmingCharacters(in: .whitespaces)
   let menu = presentation(route: route, status: notice)
-  #expect(menu.warnings.contains(notice))
+  #expect(menu.summary == "One AirPod in Use")
+  #expect(menu.reason == nil)
   #expect(menu.details.contains("Audio Output: \(route)"))
-  for text in menu.warnings + menu.details {
+  #expect(menu.details.contains("Status: \(notice)"))
+  for text in menu.details {
     let lines = MenuText.lines(text)
     #expect(lines.allSatisfy { $0.count <= MenuText.width })
     #expect(lines.joined(separator: " ") == text)
   }
 }
 
-@Test func noticesDoNotRepeatTheSameSnapshotWarning() {
-  let cases: [(Notice, Bool, Bool, Bool)] = [
-    (.detectionDisabled, false, false, true),
-    (.commandFailed, false, true, false),
-    (.recoveryBlocked, true, false, false),
-    (.persistenceFailed, true, false, false),
+@Test func noticesNeverReplaceTheSummary() {
+  let notices: [Notice] = [
+    .detectionDisabled, .detectionQuitReminder, .previousCrash, .persistenceFailed,
+    .recoveryBlocked, .stereoNotRestored, .commandFailed,
   ]
-  for (notice, blocked, failed, detectionOff) in cases {
-    var snapshot = menuSnapshot()
-    snapshot.blocked = blocked
-    snapshot.operational = !blocked
-    snapshot.detection = detectionOff ? .off : .on
-    snapshot.count = detectionOff ? nil : 1
-    snapshot.lastCompleted = CommandReceipt(id: 2, target: .mono, exitCode: failed ? 7 : 0)
+  for notice in notices {
     let message = NoticePresenter.message(notice)
-    #expect(presentation(snapshot, status: message).warnings == [message])
+    let menu = presentation(status: message)
+    #expect(menu.summary == "One AirPod in Use", "\(notice)")
+    #expect(menu.reason == nil, "\(notice)")
+    #expect(menu.details.last == "Status: \(message)")
   }
 }
 
-@Test func systemMonoOverrideIsAWarningWithoutChangingSummaryOrReceipt() {
+@Test func systemMonoOnPausesSwitchingWithoutChangingTheReceipt() {
   for preference in [SystemMono.on, .off, .unreadable] {
     var snapshot = menuSnapshot()
     snapshot.audio = AudioReading(generation: 1, mode: .stereo, status: 0, systemMono: preference)
     let menu = presentation(snapshot)
-    #expect(menu.summary == "One AirPod in Use")
-    #expect(menu.details.contains("Last Command: Mono (Exit 0)"))
+    #expect(menu.summary == (preference == .on ? "Switching Paused" : "One AirPod in Use"))
     #expect(
-      menu.warnings.contains("System Mono Audio is on; automatic switching is paused.")
-        == (preference == .on))
+      menu.reason == (preference == .on ? "Mono Audio is on in Accessibility settings." : nil))
+    #expect(menu.details.contains("Last Command: Mono (Exit 0)"))
     let state =
       preference == .on ? "On" : preference == .off ? "Off" : "Unavailable (treated as off)"
-    #expect(menu.details.contains("Accessibility Mono Audio: \(state)"))
+    #expect(menu.details.contains("Mono Audio: \(state)"))
+    #expect(!menu.details.contains { $0.hasPrefix("Accessibility Mono Audio") })
     #expect(!menu.details.contains { $0.hasPrefix("System Mono Audio") })
     #expect(menu.details.contains("Current Audio: Stereo (OSStatus 0)"))
   }
 }
 
 @Test func visibleApplicationNameIsConsistentInWarningsAndStartup() {
-  var snapshot = menuSnapshot()
-  snapshot.detection = .off
-  #expect(presentation(snapshot).warnings.contains { $0.contains("use MonoPods.") })
-  #expect(
-    presentation(nil, status: "Waiting for the command owner").summary == "Waiting for MonoPods…")
+  #expect(presentation(nil, status: "Waiting for the command owner").summary == "Starting…")
   #expect(LoginText.notInstalled == "Move MonoPods to Applications to launch at login.")
   #expect(NoticePresenter.message(.commandFailed).contains("quit and reopen MonoPods."))
   #expect(NoticePresenter.message(.detectionDisabled).contains("use MonoPods."))
@@ -194,7 +185,7 @@ private func knownModel(_ id: Int) -> AirPodsModel? {
   AirPodsModel.model(productID: id)
 }
 
-private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot switch."
+private let maxReason = "AirPods Max have no ear detection."
 
 @Test func detailsNameTheRecognisedModelRightAfterTheAudioOutput() throws {
   let details = presentation(model: knownModel(0x2014)).details
@@ -203,12 +194,26 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
   #expect(details.count == 8)
 }
 
+@Test func detailsFollowTheApprovedOrder() {
+  var snapshot = menuSnapshot()
+  snapshot.audio = AudioReading(generation: 1, mode: .mono, status: 0, systemMono: .off)
+  let details = presentation(snapshot).details
+  let labels = [
+    "Audio Output:", "Model:", "Automatic Ear Detection:", "AirPods in Use:", "Current Audio:",
+    "Mono Audio:", "Last Command:", "Status:",
+  ]
+  #expect(details.count == labels.count)
+  for (line, label) in zip(details, labels) {
+    #expect(line.hasPrefix(label), "\(line)")
+  }
+}
+
 @Test func unrecognisedProductIDIsReportedAndStillWorks() {
   let menu = presentation(model: nil)
   #expect(menu.details.contains("Model: Not Recognized"))
   #expect(menu.summary == "One AirPod in Use")
   #expect(menu.symbol == "airpodspro")
-  #expect(menu.warnings.isEmpty)
+  #expect(menu.reason == nil)
 }
 
 @Test func missingOutputShowsNoModelEvenIfOneIsStale() {
@@ -217,7 +222,7 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
       let menu = presentation(route: route, model: model)
       #expect(menu.details.contains("Model: None"))
       #expect(menu.summary == "No AirPods Audio Output")
-      #expect(!menu.warnings.contains(maxWarning))
+      #expect(menu.reason != maxReason)
     }
   }
 }
@@ -228,7 +233,7 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
     let menu = presentation(route: "Headphones", model: model)
     #expect(menu.summary == "AirPods Max Not Supported")
     #expect(menu.symbol == "airpodsmax")
-    #expect(menu.warnings == [maxWarning])
+    #expect(menu.reason == maxReason)
     #expect(menu.details.contains("Model: \(model?.name ?? "")"))
   }
 }
@@ -237,7 +242,7 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
   for model in AirPodsModel.known where model.earDetection {
     let menu = presentation(model: model)
     #expect(menu.summary == "One AirPod in Use")
-    #expect(!menu.warnings.contains(maxWarning))
+    #expect(menu.reason != maxReason)
   }
 }
 
@@ -251,17 +256,18 @@ private let maxWarning = "AirPods Max have no ear detection, so MonoPods cannot 
   detectionOff.detection = .off
   var unavailable = menuSnapshot()
   unavailable.healthy = false
-  let cases: [(EngineSnapshot, String, String)] = [
-    (blocked, "Observing", "Automation Blocked"),
-    (failed, "Observing", "Audio Change Failed"),
-    (menuSnapshot(), "Something unexpected", "Needs Attention"),
-    (detectionOff, "Observing", "Automatic Ear Detection Off"),
-    (unavailable, "Observing", "Ear Detection Unavailable"),
+  let cases: [(EngineSnapshot, MenuSituation)] = [
+    (blocked, .blocked),
+    (failed, .commandFailed),
+    (detectionOff, .detectionOff),
+    (unavailable, .detectionUnavailable),
   ]
-  for (snapshot, status, summary) in cases {
-    let menu = presentation(snapshot, status: status, model: max)
-    #expect(menu.summary == summary)
-    #expect(menu.warnings.contains(maxWarning))
+  for (snapshot, situation) in cases {
+    let menu = presentation(snapshot, model: max)
+    #expect(menu.situation == situation)
+    #expect(menu.summary == situation.summary)
+    #expect(menu.reason == situation.reason)
+    #expect(menu.reason != maxReason)
   }
 }
 

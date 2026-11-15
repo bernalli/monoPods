@@ -125,6 +125,35 @@ class UpdateWiringTests(unittest.TestCase):
         self.assertEqual(sorted(set(imports)), ['AppKit', 'Foundation', 'Sparkle'])
 
 
+class MenuWiringTests(unittest.TestCase):
+    HOST = ROOT / 'Sources/MonoPodsRuntime/RuntimeHost.swift'
+    CONTROLLER = ROOT / 'Sources/MonoPods/StatusMenuController.swift'
+
+    def test_launch_at_login_uses_one_predicate(self):
+        host = self.HOST.read_text()
+        self.assertEqual(
+            host.count('guard enabled != launchAtLogin, canSetLaunchAtLogin else { return }'), 1
+        )
+        self.assertEqual(host.count('public var canSetLaunchAtLogin: Bool { owner != nil }'), 1)
+        self.assertEqual(
+            self.CONTROLLER.read_text().count('launchAtLoginEnabled: host.canSetLaunchAtLogin'), 1
+        )
+
+    def test_hide_menu_bar_icon_only_hides(self):
+        self.assertEqual(
+            self.CONTROLLER.read_text().count(
+                'case .hideMenuBarIcon: host.setMenuVisible(false)'
+            ),
+            1,
+        )
+
+    def test_the_menu_has_no_version_row(self):
+        for path in swift_sources():
+            with self.subTest(path=path.relative_to(ROOT)):
+                text = path.read_text().replace('englishVersionLabel', '')
+                self.assertNotIn('versionLabel', text)
+
+
 class UpdateContractTests(unittest.TestCase):
     def test_update_events_have_closed_payloads_and_positive_uint64_ids(self):
         definitions = json.loads((ROOT / 'schemas/contract.schema.json').read_text())['$defs']

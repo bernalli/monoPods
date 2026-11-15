@@ -18,7 +18,7 @@ Put one AirPod back in its case and your Mac plays both channels through the oth
 2. Open it and drag MonoPods into Applications.
 3. Open MonoPods and allow Bluetooth access when macOS asks.
 
-MonoPods is signed with a Developer ID and notarized by Apple. On first launch it asks whether to check for updates automatically, once a day. You can change this later in Options › Automatic Updates. An update is installed only when you choose Install and Relaunch. Update checks and update downloads contact GitHub, which receives your IP address and the app version; MonoPods makes no other network requests.
+MonoPods is signed with a Developer ID and notarized by Apple. On first launch it asks whether to check for updates automatically, once a day. You can change this later in Options › Check for Updates Automatically. An update is installed only when you choose Install and Relaunch. Update checks and update downloads contact GitHub, which receives your IP address and the app version; MonoPods makes no other network requests.
 
 ## Use
 
@@ -31,7 +31,7 @@ MonoPods has no Dock icon. Click its icon in the menu bar to see how many AirPod
 - **Report an Issue…** opens a new issue on GitHub in your browser.
 - **Quit MonoPods** sets the sound back to stereo before it closes.
 
-If the Accessibility setting for mono audio is already on, MonoPods leaves the sound as it is. The menu follows the system language: English, Italian, Spanish, French, German, Portuguese (Brazil), Japanese and Simplified Chinese.
+If Mono Audio is already on in Accessibility settings, MonoPods leaves the sound as it is and the menu shows Switching Paused. The menu follows the system language: English, Italian, Spanish, French, German, Portuguese (Brazil), Japanese and Simplified Chinese.
 
 ## Requirements
 

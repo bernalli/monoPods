@@ -7,7 +7,7 @@ import Testing
     "CFBundleName": "MonoPods", "CFBundleShortVersionString": "2.3.4",
     "CFBundleVersion": "56", "NSHumanReadableCopyright": "Copyright example",
   ])
-  #expect(info.versionLabel == "Version 2.3.4")
+  #expect(info.englishVersionLabel == "Version 2.3.4")
   #expect(info.name == "MonoPods")
   #expect(info.copyright == "Copyright example")
 }
@@ -16,7 +16,7 @@ import Testing
   let info = AppInformation(infoDictionary: nil)
   #expect(info.name == "MonoPods")
   #expect(info.version == nil)
-  #expect(info.versionLabel == "Version Unavailable")
+  #expect(info.englishVersionLabel == "Version Unavailable")
   #expect(info.copyright == nil)
 }
 
@@ -26,17 +26,16 @@ import Testing
     "NSHumanReadableCopyright": 42,
   ])
   #expect(info.name == "MonoPods")
-  #expect(info.versionLabel == "Version Unavailable")
+  #expect(info.englishVersionLabel == "Version Unavailable")
   #expect(info.copyright == nil)
   #expect(
-    AppInformation(infoDictionary: ["CFBundleShortVersionString": "1.2"]).versionLabel
+    AppInformation(infoDictionary: ["CFBundleShortVersionString": "1.2"]).englishVersionLabel
       == "Version 1.2")
 }
 
-@Test func longVersionMetadataCanBeDisplayedInFull() {
+@Test func longVersionMetadataIsShownInFullInTheAbout() {
   let version = String(repeating: "1234567890", count: 12)
   let info = AppInformation(infoDictionary: ["CFBundleShortVersionString": version])
-  let lines = MenuText.lines(info.versionLabel)
-  #expect(lines.allSatisfy { $0.count <= MenuText.width })
-  #expect(lines.joined().contains(version))
+  #expect(info.englishVersionLabel == "Version \(version)")
+  #expect(info.englishVersionLabel.contains(version))
 }

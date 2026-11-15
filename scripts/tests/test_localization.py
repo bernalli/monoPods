@@ -1,4 +1,5 @@
 """Localization tables: strict format, the same keys in every language, placeholders, coverage."""
+import json
 from pathlib import Path
 import plistlib
 import re
@@ -18,13 +19,17 @@ KEYED_BY_ENGLISH = ('Localizable', 'AppleStyleUpdateDriver')
 DRIVER = SOURCES / 'MonoPods/AppleStyleUpdateDriver.swift'
 DRIVER_TABLE = 'AppleStyleUpdateDriver'
 BLUETOOTH_KEYS = ('NSBluetoothAlwaysUsageDescription', 'NSBluetoothPeripheralUsageDescription')
+# Texts shared verbatim with another app, copied from its tables.
+SHARED_FIXTURE = ROOT / 'scripts/tests/fixtures/shared-texts.json'
+FIXTURE_TABLES = ('AppleStyleUpdateDriver', 'Localizable')
+# Closed list of English values that differ from their key: (table, key) -> value.
+ENGLISH_VALUES = {('Localizable', "Don't Check"): 'Don’t Check'}
 # Closed list of the values that stay English in one language: (language, key), in every table
 # that has the key.
 SAME_AS_ENGLISH = {
     ('it', 'Mono'), ('es', 'Mono'), ('fr', 'Mono'), ('de', 'Mono'), ('pt-BR', 'Mono'),
     ('it', 'Stereo'), ('de', 'Stereo'),
     ('fr', 'Options'), ('de', 'Details'), ('de', 'Status: %@'),
-    ('fr', 'Version %@'), ('de', 'Version %@'),
     ('it', 'OK'), ('fr', 'OK'), ('de', 'OK'), ('pt-BR', 'OK'), ('ja', 'OK'),
 }
 # Visible texts that are also state: the code compares them and writes them to logs, so they
@@ -35,7 +40,7 @@ STATE_TEXTS = {
         'Automation blocked; recovery evidence needs review', 'Waiting for the command owner',
         'Configuration, manifest or runtime evidence is invalid. Automation is blocked.',
         'Diagnostic persistence failed',
-        'Applies from the next login.', 'Move MonoPods to Applications to launch at login.',
+        'Move MonoPods to Applications to launch at login.',
         'The login item could not be updated.',
         'Automatic restart is not active until the next login.',
         'No Bluetooth output',
@@ -61,14 +66,31 @@ ABOUT_TEXTS = {
     'windowTitle': 'About MonoPods', 'gitHubHelp': 'View MonoPods on GitHub',
     'sponsor': 'Buy Me a Coffee',
 }
-# Keys that only the About window used; the menu keeps `About %@` and the version lines.
+# Keys that only the About window used; the menu keeps `About %@`.
 ABOUT_ONLY_KEYS = ('Buy Me a Coffee', 'View %@ on GitHub')
-MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@', 'Version Unavailable')
+MENU_KEYS_SHARED_WITH_ABOUT = ('About %@',)
 # The version lines never show the build number, so no table has a key for it.
 BUILD_VERSION_KEYS = ('Version %@ (%@)', 'Version Unavailable (Build %@)')
 # Details lines that join a label and a fixed value are whole-sentence keys, so the value agrees
 # with the label's noun; the composed keys and the bare value they used are gone.
-REMOVED_KEYS = ('Automatic Ear Detection: %@', 'None')
+REMOVED_KEYS = (
+    'Automatic Ear Detection: %@', 'None',
+    # The menu shows one reason or remedy under the summary; the old warnings are gone.
+    'Accessibility Mono Audio: %@',
+    'AirPods Max have no ear detection, so MonoPods cannot switch.',
+    'Needs Attention',
+    'System Mono Audio is on; automatic switching is paused.',
+    'The last audio change failed. See Details for the command result.',
+    'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.',
+    'Waiting for MonoPods…',
+    'Waiting for a reliable ear detection connection.',
+    # The menu has no version row, and no line under Launch at Login when it works.
+    'Version %@', 'Version Unavailable', 'Applies from the next login.',
+    # The update checks switch has the other app's name.
+    'Automatic Updates',
+    # Automation Blocked names the remedy.
+    'Automatic switching is blocked; recovery evidence needs review.',
+)
 # Closed list of reviewed values: (language, table, key) -> value.
 REVIEWED_VALUES = {
     ('it', 'Localizable', 'Automatic Ear Detection: On'): 'Rilevamento automatico dell’orecchio: Attivato',
@@ -86,17 +108,17 @@ REVIEWED_VALUES = {
     ('es', 'Localizable', 'Audio Output: None'): 'Salida de audio: Ninguna',
     ('es', 'Localizable', 'Model: None'): 'Modelo: Ninguno',
     ('fr', 'Localizable', 'Automatic Ear Detection: On'):
-        'Détection automatique des oreilles : Activée',
+        'Détection automatique des oreilles\u00a0: Activée',
     ('fr', 'Localizable', 'Automatic Ear Detection: Off'):
-        'Détection automatique des oreilles : Désactivée',
+        'Détection automatique des oreilles\u00a0: Désactivée',
     ('fr', 'Localizable', 'Automatic Ear Detection: Unknown'):
-        'Détection automatique des oreilles : Inconnue',
-    ('fr', 'Localizable', 'Audio Output: None'): 'Sortie audio : Aucune',
-    ('fr', 'Localizable', 'Model: None'): 'Modèle : Aucun',
+        'Détection automatique des oreilles\u00a0: Inconnue',
+    ('fr', 'Localizable', 'Audio Output: None'): 'Sortie audio\u00a0: Aucune',
+    ('fr', 'Localizable', 'Model: None'): 'Modèle\u00a0: Aucun',
     ('de', 'Localizable', 'Automatic Ear Detection: On'): 'Automatische Ohrerkennung: Ein',
     ('de', 'Localizable', 'Automatic Ear Detection: Off'): 'Automatische Ohrerkennung: Aus',
     ('de', 'Localizable', 'Automatic Ear Detection: Unknown'): 'Automatische Ohrerkennung: Unbekannt',
-    ('de', 'Localizable', 'Audio Output: None'): 'Audioausgang: Keiner',
+    ('de', 'Localizable', 'Audio Output: None'): 'Audioausgabe: Keine',
     ('de', 'Localizable', 'Model: None'): 'Modell: Keines',
     ('pt-BR', 'Localizable', 'Automatic Ear Detection: On'): 'Detecção automática de ouvido: Ativada',
     ('pt-BR', 'Localizable', 'Automatic Ear Detection: Off'):
@@ -105,8 +127,6 @@ REVIEWED_VALUES = {
         'Detecção automática de ouvido: Desconhecida',
     ('pt-BR', 'Localizable', 'Audio Output: None'): 'Saída de áudio: Nenhuma',
     ('pt-BR', 'Localizable', 'Model: None'): 'Modelo: Nenhum',
-    ('ja', 'Localizable', 'AirPods Max have no ear detection, so MonoPods cannot switch.'):
-        'AirPods Maxは自動耳検出に対応していないため、MonoPodsは切り替えられません。',
     ('es', 'Localizable', 'Automatic Ear Detection Off'): 'Detección automática de oreja desactivada',
     ('es', 'Localizable',
      'Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods.'):
@@ -116,8 +136,6 @@ REVIEWED_VALUES = {
      'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
         'Si dejas de usar MonoPods, desactiva la detección automática de oreja en los ajustes de '
         'Bluetooth.',
-    ('es', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
-        'Activa la detección automática de oreja en los ajustes de Bluetooth para usar MonoPods.',
     ('fr', 'Localizable', 'Automatic Ear Detection Off'):
         'Détection automatique des oreilles désactivée',
     ('fr', 'Localizable',
@@ -128,18 +146,38 @@ REVIEWED_VALUES = {
      'If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.'):
         'Si vous n’utilisez plus MonoPods, désactivez la détection automatique des oreilles dans '
         'les réglages Bluetooth.',
-    ('fr', 'Localizable', 'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.'):
-        'Activez la détection automatique des oreilles dans les réglages Bluetooth pour utiliser '
-        'MonoPods.',
     ('fr', 'Localizable', 'Launch at Login'): 'Ouvrir avec la session',
-    ('de', 'Localizable', 'System Mono Audio is on; automatic switching is paused.'):
-        'Mono-Audio ist systemweit aktiviert; das automatische Umschalten ist pausiert.',
     ('ja', 'Localizable', 'Launch at Login'): 'ログイン時に開く',
     ('zh-Hans', 'Localizable', 'Launch at Login'): '登录时打开',
-    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要跳过更新并继续吗？',
+    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '是否不更新并继续？',
+    # The exit status of the last command is named in full.
+    ('it', 'Localizable', '%@ (Exit %@)'): '%@ (codice di uscita %@)',
+    ('es', 'Localizable', '%@ (Exit %@)'): '%@ (código de salida %@)',
+    ('fr', 'Localizable', '%@ (Exit %@)'): '%@ (code de sortie %@)',
+    ('pt-BR', 'Localizable', '%@ (Exit %@)'): '%@ (código de saída %@)',
 }
 # es and fr name ear detection as Apple does: «de oreja», «des oreilles».
 EAR_DETECTION_TERMS = {'es': ('de oído', 'de oreja'), 'fr': ('de l’oreille', 'des oreilles')}
+
+# Keys whose values are shared verbatim with another app; their style is decided there.
+SHARED_KEYS = (
+    '%@ can check for new versions once a day. You can change this at any time in Options.',
+    'About %@', 'Check Automatically', 'Check for Updates Automatically',
+    'Check for Updates Automatically?', 'Check for Updates…', "Don't Check",
+    'Hide Menu Bar Icon', 'Launch at Login', 'Open %@ again to bring it back.', 'Options',
+    'Quit %@', 'Report an Issue…',
+)
+# French puts a no-break space before these marks.
+FRENCH_HIGH_MARKS = ':;?!'
+# Closed list of texts that name a menu item: the text contains the item's title, identical.
+MENU_REFERENCES = {
+    'See Details for the command result.': 'Details',
+    'Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…': 'Report an Issue…',
+}
+# The label of the Details line and the reason of Switching Paused name the same setting.
+MONO_AUDIO_LINE = 'Mono Audio: %@'
+MONO_AUDIO_REASON = 'Mono Audio is on in Accessibility settings.'
+LABEL_END = ' \u00a0\u202f:：'
 
 # The only files that may pass a value, not a literal, to Localized.
 NON_LITERAL_FILES = ('MenuPresentation.swift', 'MenuLayout.swift', 'NoticePresenter.swift')
@@ -235,6 +273,47 @@ def validate(data: bytes) -> list[tuple[str, str]]:
     for key, value in entries:
         check_entry(key, value)
     return entries
+
+
+def _refuse_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise StringsError('duplicate key in the shared fixture')
+    return dict(pairs)
+
+
+def load_shared_fixture(data: bytes) -> dict[str, dict[str, dict[str, str]]]:
+    """The shared texts: exactly the tables and languages, one key set per table, text values."""
+    try:
+        text = data.decode('utf-8')
+    except UnicodeDecodeError as error:
+        raise StringsError('shared fixture is not UTF-8') from error
+    try:
+        document = json.loads(text, object_pairs_hook=_refuse_duplicates)
+    except json.JSONDecodeError as error:
+        raise StringsError(f'shared fixture is not one JSON document: {error}') from error
+    if not isinstance(document, dict) or sorted(document) != sorted(FIXTURE_TABLES):
+        raise StringsError('shared fixture tables')
+    for name in FIXTURE_TABLES:
+        languages = document[name]
+        if not isinstance(languages, dict) or sorted(languages) != sorted(LANGUAGES):
+            raise StringsError(f'shared fixture languages of {name}')
+        keys = None
+        for language in LANGUAGES:
+            entries = languages[language]
+            if not isinstance(entries, dict) or not entries:
+                raise StringsError(f'shared fixture entries of {name} {language}')
+            for value in entries.values():
+                if not isinstance(value, str) or not value:
+                    raise StringsError(f'shared fixture value in {name} {language}')
+            if keys is None:
+                keys = sorted(entries)
+            elif sorted(entries) != keys:
+                raise StringsError(f'shared fixture keys of {name} {language}')
+        for key, value in languages[ENGLISH].items():
+            if value != ENGLISH_VALUES.get((name, key), key):
+                raise StringsError(f'shared fixture English value of {key!r}')
+    return document
 
 
 def table_path(language: str, name: str) -> Path:
@@ -450,7 +529,7 @@ class LocalizationTableTests(unittest.TestCase):
             if name in KEYED_BY_ENGLISH:
                 for key, value in english.items():
                     with self.subTest(table=name, key=key):
-                        self.assertEqual(value, key)
+                        self.assertEqual(value, ENGLISH_VALUES.get((name, key), key))
         plist = table(ENGLISH, 'InfoPlist')
         self.assertEqual(sorted(plist), sorted(BLUETOOTH_KEYS))
         for key in BLUETOOTH_KEYS:
@@ -559,6 +638,186 @@ class LocalizationSourceTests(unittest.TestCase):
                         self.assertNotIn(old, value)
                         if 'detection' in key.lower():
                             self.assertIn(new, value)
+
+    def test_l14_shared_fixture_loader_rejects_malformed_input(self):
+        def document(**changes: object) -> dict:
+            base = {
+                name: {language: {'K': 'K' if language == ENGLISH else f'K {language}'}
+                       for language in LANGUAGES}
+                for name in FIXTURE_TABLES
+            }
+            base.update(changes)
+            return base
+
+        def encode(value: object) -> bytes:
+            return json.dumps(value, ensure_ascii=False).encode('utf-8')
+
+        self.assertEqual(load_shared_fixture(encode(document())), document())
+        missing_language = document()
+        del missing_language['Localizable']['ja']
+        extra_language = document()
+        extra_language['Localizable']['ko'] = {'K': 'K ko'}
+        extra_table = document(InfoPlist={language: {'K': 'K'} for language in LANGUAGES})
+        missing_table = document()
+        del missing_table['AppleStyleUpdateDriver']
+        different_keys = document()
+        different_keys['Localizable']['it'] = {'L': 'L it'}
+        english_differs = document()
+        english_differs['Localizable'][ENGLISH] = {'K': 'Other'}
+        empty_language = document()
+        empty_language['Localizable']['fr'] = {}
+        cases = {
+            'missing language': encode(missing_language),
+            'extra language': encode(extra_language),
+            'extra table': encode(extra_table),
+            'missing table': encode(missing_table),
+            'different keys': encode(different_keys),
+            'English value differs': encode(english_differs),
+            'empty language': encode(empty_language),
+            'not UTF-8': encode(document()).replace(b'K it', b'K \xff'),
+            'two documents': encode(document()) + encode(document()),
+            'top level list': encode([document()]),
+            'top level string': encode('Localizable'),
+            'duplicate table': b'{"Localizable": {}, "Localizable": {}}',
+        }
+        doubled = encode(document())
+        cases['duplicate language'] = doubled.replace(
+            b'"Localizable": {"en": {"K": "K"},',
+            b'"Localizable": {"en": {"K": "K"}, "en": {"K": "K"},', 1)
+        cases['duplicate key'] = doubled.replace(
+            b'"Localizable": {"en": {"K": "K"}',
+            b'"Localizable": {"en": {"K": "K", "K": "K"}', 1)
+        for bad in (None, 1, [], {}, ''):
+            value = document()
+            value['Localizable']['it'] = {'K': bad}
+            cases[f'value {bad!r}'] = encode(value)
+        for name, data in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaises(StringsError):
+                    load_shared_fixture(data)
+        self.assertNotEqual(cases['duplicate language'], doubled)
+        self.assertNotEqual(cases['duplicate key'], doubled)
+
+    def test_l14_shared_fixture_rejects_generated_mutations(self):
+        def encode(value):
+            return json.dumps(value, ensure_ascii=False).encode('utf-8')
+
+        def at(value, path):
+            for key in path:
+                value = value[key]
+            return value
+
+        def objects(value, path=()):
+            yield path
+            for key, child in value.items():
+                if isinstance(child, dict):
+                    yield from objects(child, path + (key,))
+
+        def render(value, duplicate=None, path=()):
+            if not isinstance(value, dict):
+                return json.dumps(value, ensure_ascii=False)
+            pairs = list(value.items())
+            if path == duplicate:
+                pairs.append(pairs[0])
+            return '{' + ','.join(
+                json.dumps(key) + ':' + render(child, duplicate, path + (key,))
+                for key, child in pairs) + '}'
+
+        def reversed_objects(value):
+            if not isinstance(value, dict):
+                return value
+            return {key: reversed_objects(child)
+                    for key, child in reversed(list(value.items()))}
+
+        for count in (1, 3):
+            document = {
+                name: {
+                    language: {
+                        f'K{i}é': f'K{i}é' if language == ENGLISH else f'V{i} {language}'
+                        for i in range(count)}
+                    for language in LANGUAGES}
+                for name in FIXTURE_TABLES}
+            data = render(document).encode('utf-8')
+            self.assertEqual(load_shared_fixture(data), document)
+            self.assertEqual(load_shared_fixture(encode(reversed_objects(document))), document)
+            for end in range(len(data)):
+                with self.subTest(count=count, truncation=end):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(data[:end])
+            for path in objects(document):
+                with self.subTest(count=count, duplicate=path):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(render(document, path).encode('utf-8'))
+                changed = json.loads(data)
+                at(changed, path)['unexpected'] = 'extra'
+                with self.subTest(count=count, extra=path):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(encode(changed))
+                for key in at(document, path):
+                    changed = json.loads(data)
+                    del at(changed, path)[key]
+                    with self.subTest(count=count, missing=path + (key,)):
+                        with self.assertRaises(StringsError):
+                            load_shared_fixture(encode(changed))
+                    for bad in (None, False, 0, 1.5, [], {}, ''):
+                        changed = json.loads(data)
+                        at(changed, path)[key] = bad
+                        with self.subTest(count=count, field=path + (key,), value=bad):
+                            with self.assertRaises(StringsError):
+                                load_shared_fixture(encode(changed))
+
+    def test_l14_shared_texts_match_the_other_app(self):
+        fixture = load_shared_fixture(SHARED_FIXTURE.read_bytes())
+        for name, languages in fixture.items():
+            for language, entries in languages.items():
+                mine = table(language, name)
+                if name == DRIVER_TABLE:
+                    with self.subTest(table=name, language=language):
+                        self.assertEqual(mine, entries)
+                for key, value in entries.items():
+                    with self.subTest(table=name, language=language, key=key):
+                        self.assertEqual(mine.get(key, '').encode('utf-8'), value.encode('utf-8'))
+
+    def test_l14_shared_keys_are_the_closed_list(self):
+        fixture = load_shared_fixture(SHARED_FIXTURE.read_bytes())
+        english = table(ENGLISH, 'Localizable')
+        self.assertEqual(sorted(SHARED_KEYS), sorted(fixture['Localizable'][ENGLISH]))
+        for key in SHARED_KEYS:
+            with self.subTest(key=key):
+                self.assertIn(key, english)
+
+    def test_l15_installing_update_is_the_same_in_the_menu_and_the_update_window(self):
+        for language in LANGUAGES:
+            with self.subTest(language=language):
+                self.assertEqual(table(language, 'Localizable')['Installing Update…'],
+                                 table(language, DRIVER_TABLE)['Installing Update…'])
+
+    def test_l17_mono_audio_has_one_name(self):
+        for language in LANGUAGES:
+            localizable = table(language, 'Localizable')
+            with self.subTest(language=language):
+                label = localizable[MONO_AUDIO_LINE].split('%@')[0].rstrip(LABEL_END)
+                self.assertTrue(label)
+                self.assertIn(label.casefold(), localizable[MONO_AUDIO_REASON].casefold())
+
+    def test_l19_a_text_that_names_a_menu_item_uses_its_title(self):
+        for language in LANGUAGES:
+            localizable = table(language, 'Localizable')
+            for text, item in MENU_REFERENCES.items():
+                with self.subTest(language=language, text=text):
+                    self.assertIn(localizable[item], localizable[text])
+
+    def test_l18_french_uses_no_break_spaces(self):
+        for name in ('Localizable', 'InfoPlist'):
+            for key, value in table('fr', name).items():
+                if name == 'Localizable' and key in SHARED_KEYS:
+                    continue
+                with self.subTest(table=name, key=key):
+                    for index, character in enumerate(value):
+                        if character in FRENCH_HIGH_MARKS and index > 0:
+                            self.assertNotEqual(value[index - 1], ' ')
+                            if value[index - 1].isspace():
+                                self.assertEqual(value[index - 1], '\u00a0')
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

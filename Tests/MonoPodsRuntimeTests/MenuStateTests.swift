@@ -19,6 +19,16 @@ import Testing
   #expect(emissions(of: host) { host.setMenuVisible(!host.menuVisible) } == 1)
 }
 
+@MainActor @Test func launchAtLoginCannotBeSetWithoutTheRuntimeLock() {
+  let host = RuntimeHost()
+  #expect(host.canSetLaunchAtLogin == false)
+  let launchAtLogin = host.launchAtLogin
+  let caption = host.loginCaption
+  host.setLaunchAtLogin(!host.launchAtLogin)
+  #expect(host.launchAtLogin == launchAtLogin)
+  #expect(host.loginCaption == caption)
+}
+
 @MainActor @Test func repeatedPulseStateDoesNotPublish() {
   let host = RuntimeHost()
   let base = Engine(build: testBuild, run: 1, boot: "boot").snapshot

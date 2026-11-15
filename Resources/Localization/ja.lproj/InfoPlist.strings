@@ -1,2 +1,2 @@
-"NSBluetoothAlwaysUsageDescription" = "MonoPodsは、接続されたBluetoothオーディオ出力と装着検出の状態を監視します。";
-"NSBluetoothPeripheralUsageDescription" = "MonoPodsは、接続されたBluetoothオーディオデバイスを検索せずに監視します。";
+"NSBluetoothAlwaysUsageDescription" = "MonoPodsは、接続されたBluetoothオーディオ出力と耳検出の状態を監視します。";
+"NSBluetoothPeripheralUsageDescription" = "MonoPodsは、すでに接続されているBluetoothオーディオデバイスを監視するだけで、新しいデバイスは検索しません。";

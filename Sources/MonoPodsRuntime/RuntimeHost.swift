@@ -12,6 +12,12 @@ public enum LoginText {
   public static let unsupervised = "Automatic restart is not active until the next login."
 }
 
+/// Runtime statuses that the menu compares. They stay English: they are also state and logs.
+public enum RuntimeStatus {
+  public static let invalidConfiguration =
+    "Configuration, manifest or runtime evidence is invalid. Automation is blocked."
+}
+
 @MainActor public final class RuntimeHost: ObservableObject {
   @Published public var menuVisible = false
   @Published public private(set) var launchAtLogin = true
@@ -153,7 +159,7 @@ public enum LoginText {
     } catch {
       menuVisible = true
       glyph = .attention
-      status = "Configuration, manifest or runtime evidence is invalid. Automation is blocked."
+      status = RuntimeStatus.invalidConfiguration
       _ = presenter.present(.recoveryBlocked)
     }
   }
@@ -714,9 +720,12 @@ public enum LoginText {
         DispatchQueue.main.async { _ = presenter.present(.stereoNotRestored) }
       })
   }
+  /// True when this process can apply a Launch at Login choice: only the owner of the runtime lock
+  /// saves it.
+  public var canSetLaunchAtLogin: Bool { owner != nil }
   /// The choice is saved first; the plist changes now, the job from the next login.
   public func setLaunchAtLogin(_ enabled: Bool) {
-    guard enabled != launchAtLogin, owner != nil else { return }
+    guard enabled != launchAtLogin, canSetLaunchAtLogin else { return }
     launchAtLogin = enabled
     preferences.launchAtLogin = enabled
     preferencesDirty = true

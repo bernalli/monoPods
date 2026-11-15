@@ -330,7 +330,7 @@ private func notFound(reason: Int?) -> NSError {
   #expect(driver.alert?.messageText == "È disponibile MonoPods 1.1.1 (hai la 1.1.0).")
   #expect(driver.alert?.buttons.map(\.title) == ["Installa e riavvia", "Più tardi"])
   driver.presentNotFound(reason: 1, description: "", acknowledgement: {})
-  #expect(driver.alert?.messageText == "MonoPods è aggiornata.")
+  #expect(driver.alert?.messageText == "MonoPods è aggiornato.")
 }
 
 // MARK: - Random sequences

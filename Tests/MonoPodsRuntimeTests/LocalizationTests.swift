@@ -22,8 +22,7 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
   #expect(Localized.format("Quit %@", "MonoPods", bundle: bundle) == "Esci da MonoPods")
 }
 
-/// With the Italian table, the menu item and the menu version line are Italian, and every text of
-/// the About window is English.
+/// With the Italian table, the menu item is Italian, and every text of the About window is English.
 @MainActor @Test func theAboutWindowStaysEnglishWhenTheMenuIsItalian() throws {
   let italian = try #require(
     Bundle(path: repositoryRoot.appendingPathComponent("Resources/Localization/it.lproj").path))
@@ -35,7 +34,8 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
 @MainActor private func checkAboutWithItalianLocalization(_ italian: Bundle) {
   #expect(Localized.text("Options") == "Opzioni")
   #expect(MenuTitle.about == "Informazioni su MonoPods")
-  #expect(Localized.format("Version %@", "1.1.0", bundle: italian) == "Versione 1.1.0")
+  // The menu has no version line, so no table translates it.
+  #expect(Localized.text("Version %@", bundle: italian) == "Version %@")
   // No table has the texts of the About window, so not even a lookup could translate them.
   #expect(Localized.text("Buy Me a Coffee", bundle: italian) == "Buy Me a Coffee")
   #expect(
@@ -47,7 +47,6 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
     "CFBundleShortVersionString": "1.1.0", "CFBundleVersion": "14",
     "NSHumanReadableCopyright": "Copyright © 2026 Example",
   ])
-  #expect(information.versionLabel == "Versione 1.1.0")
   #expect(information.englishVersionLabel == "Version 1.1.0")
   #expect(information.copyright == "Copyright © 2026 Example")
   let controller = AboutWindowController(
@@ -65,13 +64,11 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
   for (metadata, label) in cases {
     let information = AppInformation(infoDictionary: metadata)
     #expect(information.englishVersionLabel == label)
-    // Without a table the menu line reads the same.
-    #expect(information.versionLabel == label)
   }
 }
 
-/// Every shape of the bundle metadata: neither the menu line nor the About line shows the build,
-/// without a table and with the Italian table in effect.
+/// Every shape of the bundle metadata: the About line never shows the build, without a table and
+/// with the Italian table in effect.
 @Test func theVersionLinesNeverShowTheBuild() throws {
   let italian = try #require(
     Bundle(path: repositoryRoot.appendingPathComponent("Resources/Localization/it.lproj").path))
@@ -94,16 +91,13 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
   for (metadata, version) in shapes {
     let information = AppInformation(infoDictionary: metadata)
     let english = version.map { "Version \($0)" } ?? "Version Unavailable"
-    let menu = information.versionLabel
     let about = information.englishVersionLabel
-    let (italianMenu, italianAbout) = Localized.$bundleOverride.withValue(italian) {
-      (information.versionLabel, information.englishVersionLabel)
+    let italianAbout = Localized.$bundleOverride.withValue(italian) {
+      information.englishVersionLabel
     }
-    #expect(menu == english)
     #expect(about == english)
-    #expect(italianMenu == (version.map { "Versione \($0)" } ?? "Versione non disponibile"))
     #expect(italianAbout == english)
-    for line in [menu, about, italianMenu, italianAbout] {
+    for line in [about, italianAbout] {
       #expect(!line.contains(build) && !line.localizedCaseInsensitiveContains("build"))
       #expect(!line.contains("(") && !line.contains("（"))
     }
