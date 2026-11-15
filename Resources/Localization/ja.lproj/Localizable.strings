@@ -6,7 +6,6 @@
 "AirPods in Use: %@" = "使用中のAirPods: %@";
 "An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "オーディオコマンドが繰り返し失敗しました。このモードへの自動切り替えはブロックされています。切り替えが再開しない場合は、MonoPodsを終了してからもう一度開いてください。";
 "An update is being installed. MonoPods restarts when the new version is in place." = "アップデートをインストール中です。新しいバージョンの準備ができるとMonoPodsが再起動します。";
-"Applies from the next login." = "次回のログインから適用されます。";
 "Audio Change Failed" = "オーディオの切り替えに失敗";
 "Audio Output: %@" = "オーディオ出力: %@";
 "Audio Output: None" = "オーディオ出力: なし";
@@ -76,8 +75,6 @@
 "Unavailable (treated as off)" = "利用不可（オフとして扱います）";
 "Unknown" = "不明";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "アップデートが完了しなかった場合にのみ使用してください。MonoPodsはインストール済みのバージョンを再起動します。その後、もう一度“アップデートを確認…”を選択するか、ディスクイメージからMonoPodsを再インストールしてください。";
-"Version %@" = "バージョン %@";
-"Version Unavailable" = "バージョン不明";
 "Waiting for Ear Detection" = "装着検出を待機中";
 "Waiting for a reliable connection." = "信頼できる接続を待機中です。";
 "Waiting for the command owner" = "コマンドの管理プロセスを待機中";

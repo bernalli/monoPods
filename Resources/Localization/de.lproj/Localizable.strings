@@ -6,7 +6,6 @@
 "AirPods in Use: %@" = "AirPods in Verwendung: %@";
 "An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "Ein Audiobefehl ist wiederholt fehlgeschlagen. Automatische Versuche für dieses Ziel sind blockiert. Wenn das Umschalten nicht wieder startet, beende MonoPods und öffne es erneut.";
 "An update is being installed. MonoPods restarts when the new version is in place." = "Ein Update wird installiert. MonoPods startet neu, sobald die neue Version bereit ist.";
-"Applies from the next login." = "Gilt ab der nächsten Anmeldung.";
 "Audio Change Failed" = "Audiowechsel fehlgeschlagen";
 "Audio Output: %@" = "Audioausgang: %@";
 "Audio Output: None" = "Audioausgang: Keiner";
@@ -76,8 +75,6 @@
 "Unavailable (treated as off)" = "Nicht verfügbar (gilt als aus)";
 "Unknown" = "Unbekannt";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "Verwende dies nur, wenn das Update nicht abgeschlossen wurde. MonoPods startet die installierte Version neu; wähle danach erneut „Nach Updates suchen …“ oder installiere MonoPods neu aus dem Disk-Image.";
-"Version %@" = "Version %@";
-"Version Unavailable" = "Version nicht verfügbar";
 "Waiting for Ear Detection" = "Warten auf Ohrerkennung";
 "Waiting for a reliable connection." = "Warten auf eine zuverlässige Verbindung.";
 "Waiting for the command owner" = "Warten auf den Befehlsverwalter";

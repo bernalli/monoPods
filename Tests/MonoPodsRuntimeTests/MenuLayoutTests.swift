@@ -16,8 +16,8 @@ private func layoutSnapshot(count: Int? = 1) -> EngineSnapshot {
 
 private func layoutState(
   snapshot: EngineSnapshot? = layoutSnapshot(), route: String = "AirPods Pro",
-  status: String = "Observing", launchAtLogin: Bool = true,
-  login: String = LoginText.nextLogin, menuVisible: Bool = true,
+  status: String = "Observing", launchAtLogin: Bool = true, launchAtLoginEnabled: Bool = true,
+  login: String = LoginText.nextLogin,
   updates: UpdateMenuState = UpdateMenuState(available: true, canCheck: true),
   waiting: Bool = false
 ) -> MenuState {
@@ -25,9 +25,8 @@ private func layoutState(
     presentation: MenuPresentation(
       snapshot: snapshot, routeName: route, routeModel: AirPodsModel.model(productID: 0x2014),
       status: status, waitingForUpdate: waiting),
-    launchAtLogin: launchAtLogin, loginCaption: login,
-    menuVisible: menuVisible, versionLabel: "Version 1.0.1", updates: updates,
-    waitingForUpdate: waiting)
+    launchAtLogin: launchAtLogin, launchAtLoginEnabled: launchAtLoginEnabled,
+    loginCaption: login, updates: updates, waitingForUpdate: waiting)
 }
 
 private func submenu(_ rows: [MenuRow], titled title: String) -> [MenuRow]? {
@@ -54,13 +53,17 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   }
 }
 
-@Test func reportAnIssueIsASelectableItemNextToAbout() throws {
+@Test func aboutCheckAndReportComeInTheApprovedOrder() throws {
   let rows = MenuLayout.rows(for: layoutState())
   let about = try #require(index(of: .about, in: rows))
-  let report = try #require(index(of: .reportIssue, in: rows))
-  #expect(report == about + 1)
-  #expect(rows[report].title == "Report an Issue\u{2026}")
-  #expect(rows[report].kind == .action(.reportIssue, enabled: true, key: ""))
+  #expect(index(of: .checkForUpdates, in: rows) == about + 1)
+  #expect(index(of: .reportIssue, in: rows) == about + 2)
+  #expect(rows[about + 2].title == "Report an Issue\u{2026}")
+  #expect(rows[about + 2].kind == .action(.reportIssue, enabled: true, key: ""))
+  let without = MenuLayout.rows(
+    for: layoutState(updates: UpdateMenuState(available: false, canCheck: false)))
+  let aboutOnly = try #require(index(of: .about, in: without))
+  #expect(index(of: .reportIssue, in: without) == aboutOnly + 1)
 }
 
 @Test func menuOpensWithTheNativeSectionHeaderAndEndsWithQuit() throws {
@@ -71,13 +74,13 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   #expect(last.kind == .action(.quit, enabled: true, key: "q"))
 }
 
-@Test func summaryVersionAndDetailsAreInformationRows() throws {
+@Test func summaryAndDetailsAreInformationRowsAndNoVersionRow() throws {
   let state = layoutState()
   let rows = MenuLayout.rows(for: state)
   let summary = try #require(rows.first { $0.title == state.presentation.summary })
   #expect(summary.kind == .info)
   #expect(summary.symbol == state.presentation.symbol)
-  #expect(rows.contains { $0.title == "Version 1.0.1" && $0.kind == .info })
+  #expect(!rows.contains { $0.id.hasPrefix("version") || $0.title.hasPrefix("Version") })
   let details = try #require(submenu(rows, titled: "Details"))
   #expect(!details.isEmpty)
   #expect(details.allSatisfy { $0.kind == .info })
@@ -134,13 +137,45 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
 }
 
 @Test func togglesShowTheCurrentSettings() throws {
-  let rows = MenuLayout.rows(for: layoutState(launchAtLogin: false, menuVisible: true))
+  let rows = MenuLayout.rows(for: layoutState(launchAtLogin: false))
   let options = try #require(submenu(rows, titled: "Options"))
   #expect(options.contains { $0.kind == .toggle(.launchAtLogin, isOn: false, enabled: true) })
-  #expect(options.contains { $0.kind == .toggle(.hideMenuBarIcon, isOn: false, enabled: true) })
-  #expect(options.contains { $0.title == LoginText.nextLogin && $0.kind == .info })
-  let hidden = try #require(submenu(MenuLayout.rows(for: layoutState()), titled: "Options"))
-  #expect(hidden.contains { $0.kind == .toggle(.launchAtLogin, isOn: true, enabled: true) })
+  #expect(options.contains { $0.kind == .action(.hideMenuBarIcon, enabled: true, key: "") })
+  #expect(!options.contains { $0.title == LoginText.nextLogin })
+  #expect(!options.contains { $0.id.hasPrefix("login.caption.") })
+  let checked = try #require(submenu(MenuLayout.rows(for: layoutState()), titled: "Options"))
+  #expect(checked.contains { $0.kind == .toggle(.launchAtLogin, isOn: true, enabled: true) })
+}
+
+@Test func launchAtLoginIsDimmedWhenThisProcessCannotApplyIt() throws {
+  for isOn in [false, true] {
+    let options = try #require(
+      submenu(
+        MenuLayout.rows(for: layoutState(launchAtLogin: isOn, launchAtLoginEnabled: false)),
+        titled: "Options"))
+    let login = try #require(options.first { $0.id == "login" })
+    #expect(login.kind == .toggle(.launchAtLogin, isOn: isOn, enabled: false))
+  }
+}
+
+@Test func loginProblemsStayInOptions() throws {
+  for caption in [LoginText.failed, LoginText.notInstalled, LoginText.unsupervised] {
+    let rows = MenuLayout.rows(for: layoutState(login: caption))
+    #expect(!rows.contains { $0.id.hasPrefix("login") }, "\(caption)")
+    #expect(!rows.contains { $0.id.hasPrefix("reason.") }, "\(caption)")
+    let options = try #require(submenu(rows, titled: "Options"))
+    let lines = options.filter { $0.id.hasPrefix("login.caption.") }
+    #expect(lines.map(\.title).joined(separator: " ") == caption)
+    #expect(lines.allSatisfy { $0.kind == .info && $0.symbol == nil })
+  }
+}
+
+@Test func aSeparatorComesBeforeOptions() throws {
+  let rows = MenuLayout.rows(for: layoutState())
+  let options = try #require(rows.firstIndex { $0.id == "options" })
+  #expect(
+    rows[options - 1] == MenuRow(id: "separator.options", title: "", symbol: nil, kind: .separator))
+  #expect(rows[options - 2].id == "details")
 }
 
 @Test func updateItemsFollowTheUpdaterState() throws {
@@ -156,22 +191,35 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   let waiting = MenuLayout.rows(for: layoutState(waiting: true))
   let resume = try #require(index(of: .resume, in: waiting))
   #expect(waiting[resume].title == UpdateText.resume)
+  let summary = try #require(
+    waiting.lastIndex { $0.id.hasPrefix("summary.") || $0.id.hasPrefix("reason.") })
+  #expect(resume == summary + 1)
 }
 
-@Test func automaticUpdatesIsASwitchBetweenTheLoginCaptionAndTheSeparator() throws {
-  for automaticChecks in [false, true] {
-    let updates = UpdateMenuState(
-      available: true, canCheck: true, automaticChecks: automaticChecks)
-    let options = try #require(
-      submenu(MenuLayout.rows(for: layoutState(updates: updates)), titled: "Options"))
-    let row = try #require(options.firstIndex { $0.id == "automatic" })
-    #expect(
-      options[row]
-        == MenuRow(
-          id: "automatic", title: "Automatic Updates", symbol: "arrow.triangle.2.circlepath",
-          kind: .toggle(.automaticUpdates, isOn: automaticChecks, enabled: true)))
-    #expect(options[row - 1].id.hasPrefix("login.caption."))
-    #expect(options[row + 1].id == "options.separator")
+@Test func theUpdateChecksSwitchComesAfterLoginAndBeforeTheSeparator() throws {
+  for caption in [LoginText.nextLogin, LoginText.failed] {
+    for automaticChecks in [false, true] {
+      let updates = UpdateMenuState(
+        available: true, canCheck: true, automaticChecks: automaticChecks)
+      let options = try #require(
+        submenu(
+          MenuLayout.rows(for: layoutState(login: caption, updates: updates)), titled: "Options"))
+      let row = try #require(options.firstIndex { $0.id == "automatic" })
+      #expect(
+        options[row]
+          == MenuRow(
+            id: "automatic", title: MenuTitle.automaticUpdates,
+            symbol: "arrow.triangle.2.circlepath",
+            kind: .toggle(.automaticUpdates, isOn: automaticChecks, enabled: true)))
+      let previous = options[row - 1].id
+      let lastCaption = options.lastIndex { $0.id.hasPrefix("login.caption.") }
+      if let lastCaption {
+        #expect(row - 1 == lastCaption)
+      } else {
+        #expect(previous == "login")
+      }
+      #expect(options[row + 1].id == "options.separator")
+    }
   }
 }
 
@@ -191,7 +239,11 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
       if case .submenu(let children) = row.kind { check(children) }
     }
   }
-  check(MenuLayout.rows(for: layoutState(login: LoginText.unsupervised, waiting: true)))
+  var blocked = layoutSnapshot()
+  blocked.blocked = true
+  check(
+    MenuLayout.rows(
+      for: layoutState(snapshot: blocked, login: LoginText.unsupervised, waiting: true)))
 }
 
 extension [MenuRow] {

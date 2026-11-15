@@ -720,9 +720,12 @@ public enum RuntimeStatus {
         DispatchQueue.main.async { _ = presenter.present(.stereoNotRestored) }
       })
   }
+  /// True when this process can apply a Launch at Login choice: only the owner of the runtime lock
+  /// saves it.
+  public var canSetLaunchAtLogin: Bool { owner != nil }
   /// The choice is saved first; the plist changes now, the job from the next login.
   public func setLaunchAtLogin(_ enabled: Bool) {
-    guard enabled != launchAtLogin, owner != nil else { return }
+    guard enabled != launchAtLogin, canSetLaunchAtLogin else { return }
     launchAtLogin = enabled
     preferences.launchAtLogin = enabled
     preferencesDirty = true

@@ -24,7 +24,6 @@ SAME_AS_ENGLISH = {
     ('it', 'Mono'), ('es', 'Mono'), ('fr', 'Mono'), ('de', 'Mono'), ('pt-BR', 'Mono'),
     ('it', 'Stereo'), ('de', 'Stereo'),
     ('fr', 'Options'), ('de', 'Details'), ('de', 'Status: %@'),
-    ('fr', 'Version %@'), ('de', 'Version %@'),
     ('it', 'OK'), ('fr', 'OK'), ('de', 'OK'), ('pt-BR', 'OK'), ('ja', 'OK'),
 }
 # Visible texts that are also state: the code compares them and writes them to logs, so they
@@ -35,7 +34,7 @@ STATE_TEXTS = {
         'Automation blocked; recovery evidence needs review', 'Waiting for the command owner',
         'Configuration, manifest or runtime evidence is invalid. Automation is blocked.',
         'Diagnostic persistence failed',
-        'Applies from the next login.', 'Move MonoPods to Applications to launch at login.',
+        'Move MonoPods to Applications to launch at login.',
         'The login item could not be updated.',
         'Automatic restart is not active until the next login.',
         'No Bluetooth output',
@@ -61,9 +60,9 @@ ABOUT_TEXTS = {
     'windowTitle': 'About MonoPods', 'gitHubHelp': 'View MonoPods on GitHub',
     'sponsor': 'Buy Me a Coffee',
 }
-# Keys that only the About window used; the menu keeps `About %@` and the version lines.
+# Keys that only the About window used; the menu keeps `About %@`.
 ABOUT_ONLY_KEYS = ('Buy Me a Coffee', 'View %@ on GitHub')
-MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@', 'Version Unavailable')
+MENU_KEYS_SHARED_WITH_ABOUT = ('About %@',)
 # The version lines never show the build number, so no table has a key for it.
 BUILD_VERSION_KEYS = ('Version %@ (%@)', 'Version Unavailable (Build %@)')
 # Details lines that join a label and a fixed value are whole-sentence keys, so the value agrees
@@ -79,6 +78,8 @@ REMOVED_KEYS = (
     'Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.',
     'Waiting for MonoPods…',
     'Waiting for a reliable ear detection connection.',
+    # The menu has no version row, and no line under Launch at Login when it works.
+    'Version %@', 'Version Unavailable', 'Applies from the next login.',
 )
 # Closed list of reviewed values: (language, table, key) -> value.
 REVIEWED_VALUES = {

@@ -6,7 +6,6 @@
 "AirPods in Use: %@" = "使用中的 AirPods：%@";
 "An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "音频命令多次失败。针对此模式的自动尝试已被阻止。如果切换没有恢复，请退出并重新打开 MonoPods。";
 "An update is being installed. MonoPods restarts when the new version is in place." = "正在安装更新。新版本就绪后，MonoPods 将重新启动。";
-"Applies from the next login." = "将从下次登录起生效。";
 "Audio Change Failed" = "音频切换失败";
 "Audio Output: %@" = "音频输出：%@";
 "Audio Output: None" = "音频输出：无";
@@ -76,8 +75,6 @@
 "Unavailable (treated as off)" = "不可用（视为关闭）";
 "Unknown" = "未知";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "仅在更新未完成时使用。MonoPods 会重新启动已安装的版本；之后请再次选择“检查更新…”，或从磁盘映像重新安装 MonoPods。";
-"Version %@" = "版本 %@";
-"Version Unavailable" = "版本不可用";
 "Waiting for Ear Detection" = "正在等待人耳检测";
 "Waiting for a reliable connection." = "正在等待可靠的连接。";
 "Waiting for the command owner" = "正在等待命令管理进程";

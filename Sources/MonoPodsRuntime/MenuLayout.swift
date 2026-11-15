@@ -48,21 +48,20 @@ public struct MenuRow: Equatable, Sendable {
 public struct MenuState: Equatable, Sendable {
   public var presentation: MenuPresentation
   public var launchAtLogin: Bool
+  /// False while this process cannot apply the choice; the item is then dimmed.
+  public var launchAtLoginEnabled: Bool
   public var loginCaption: String
-  public var menuVisible: Bool
-  public var versionLabel: String
   public var updates: UpdateMenuState
   public var waitingForUpdate: Bool
 
   public init(
-    presentation: MenuPresentation, launchAtLogin: Bool, loginCaption: String, menuVisible: Bool,
-    versionLabel: String, updates: UpdateMenuState, waitingForUpdate: Bool
+    presentation: MenuPresentation, launchAtLogin: Bool, launchAtLoginEnabled: Bool,
+    loginCaption: String, updates: UpdateMenuState, waitingForUpdate: Bool
   ) {
     self.presentation = presentation
     self.launchAtLogin = launchAtLogin
+    self.launchAtLoginEnabled = launchAtLoginEnabled
     self.loginCaption = loginCaption
-    self.menuVisible = menuVisible
-    self.versionLabel = versionLabel
     self.updates = updates
     self.waitingForUpdate = waitingForUpdate
   }
@@ -86,8 +85,6 @@ public enum MenuTitle {
 
 /// The menu as a list of rows, without AppKit, so its content can be tested.
 public enum MenuLayout {
-  private static let warningSymbol = "exclamationmark.triangle"
-
   public static func rows(for state: MenuState) -> [MenuRow] {
     let menu = state.presentation
     var rows: [MenuRow] = [
@@ -95,35 +92,28 @@ public enum MenuLayout {
     ]
     rows += info(menu.summary, id: "summary", symbol: menu.symbol)
     if let reason = menu.reason { rows += info(reason, id: "reason") }
+    if state.waitingForUpdate {
+      rows.append(
+        MenuRow(
+          id: "resume", title: UpdateText.resume, symbol: nil,
+          kind: .action(.resume, enabled: true, key: "")))
+    }
     let details = menu.details.enumerated().flatMap { index, detail in
       info(detail, id: "detail.\(index)")
     }
     rows.append(
       MenuRow(
         id: "details", title: MenuTitle.details, symbol: "info.circle", kind: .submenu(details)))
-    var options: [MenuRow] = []
-    options.append(
-      MenuRow(
-        id: "login", title: MenuTitle.launchAtLogin, symbol: "power",
-        kind: .toggle(.launchAtLogin, isOn: state.launchAtLogin, enabled: true)))
-    options += info(Localized.text(state.loginCaption), id: "login.caption")
-    if state.updates.showsItems {
-      options.append(
-        MenuRow(
-          id: "automatic", title: MenuTitle.automaticUpdates, symbol: "arrow.triangle.2.circlepath",
-          kind: .toggle(.automaticUpdates, isOn: state.updates.automaticChecks, enabled: true)))
-    }
-    options.append(MenuRow(id: "options.separator", title: "", symbol: nil, kind: .separator))
-    options.append(
-      MenuRow(
-        id: "hide", title: MenuTitle.hideIcon, symbol: "menubar.rectangle",
-        kind: .toggle(.hideMenuBarIcon, isOn: !state.menuVisible, enabled: true)))
-    options += info(MenuTitle.hideIconCaption, id: "hide.caption")
+    rows.append(MenuRow(id: "separator.options", title: "", symbol: nil, kind: .separator))
     rows.append(
-      MenuRow(id: "options", title: MenuTitle.options, symbol: "gearshape", kind: .submenu(options))
-    )
+      MenuRow(
+        id: "options", title: MenuTitle.options, symbol: "gearshape",
+        kind: .submenu(options(for: state))))
     rows.append(MenuRow(id: "separator.app", title: "", symbol: nil, kind: .separator))
-    rows += info(state.versionLabel, id: "version")
+    rows.append(
+      MenuRow(
+        id: "about", title: MenuTitle.about, symbol: nil,
+        kind: .action(.about, enabled: true, key: "")))
     if state.updates.showsItems {
       rows.append(
         MenuRow(
@@ -132,24 +122,40 @@ public enum MenuLayout {
     }
     rows.append(
       MenuRow(
-        id: "about", title: MenuTitle.about, symbol: nil,
-        kind: .action(.about, enabled: true, key: "")))
-    rows.append(
-      MenuRow(
         id: "report", title: MenuTitle.reportIssue, symbol: nil,
         kind: .action(.reportIssue, enabled: true, key: "")))
-    if state.waitingForUpdate {
-      rows.append(
-        MenuRow(
-          id: "resume", title: UpdateText.resume, symbol: nil,
-          kind: .action(.resume, enabled: true, key: "")))
-    }
     rows.append(MenuRow(id: "separator.quit", title: "", symbol: nil, kind: .separator))
     rows.append(
       MenuRow(
         id: "quit", title: MenuTitle.quit, symbol: nil,
         kind: .action(.quit, enabled: true, key: "q")))
     return rows
+  }
+
+  /// Launch at Login with its caption only on a problem, the update checks switch, the icon.
+  private static func options(for state: MenuState) -> [MenuRow] {
+    let login = MenuRow(
+      id: "login", title: MenuTitle.launchAtLogin, symbol: "power",
+      kind: .toggle(
+        .launchAtLogin, isOn: state.launchAtLogin, enabled: state.launchAtLoginEnabled))
+    var options = [login]
+    if state.loginCaption != LoginText.nextLogin {
+      options += info(Localized.text(state.loginCaption), id: "login.caption")
+    }
+    if state.updates.showsItems {
+      options.append(
+        MenuRow(
+          id: "automatic", title: MenuTitle.automaticUpdates,
+          symbol: "arrow.triangle.2.circlepath",
+          kind: .toggle(.automaticUpdates, isOn: state.updates.automaticChecks, enabled: true)))
+    }
+    options.append(MenuRow(id: "options.separator", title: "", symbol: nil, kind: .separator))
+    options.append(
+      MenuRow(
+        id: "hide", title: MenuTitle.hideIcon, symbol: "menubar.rectangle",
+        kind: .action(.hideMenuBarIcon, enabled: true, key: "")))
+    options += info(MenuTitle.hideIconCaption, id: "hide.caption")
+    return options
   }
 
   /// Free text as information rows of at most `MenuText.width` characters; only the first line

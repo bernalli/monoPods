@@ -14,7 +14,6 @@ import MonoPodsRuntime
   private let statusItem: NSStatusItem
   private let menu = NSMenu()
   private var renderer: MenuRenderer?
-  private let information = AppInformation(infoDictionary: Bundle.main.infoDictionary)
   private let about = AboutWindowController(
     information: AppInformation(infoDictionary: Bundle.main.infoDictionary),
     icon: NSImage(named: "AppIcon"),
@@ -80,9 +79,8 @@ import MonoPodsRuntime
       presentation: MenuPresentation(
         snapshot: host.snapshot, routeName: host.routeName, routeModel: host.routeModel,
         status: host.status, waitingForUpdate: host.waitingForUpdate),
-      launchAtLogin: host.launchAtLogin, loginCaption: host.loginCaption,
-      menuVisible: host.menuVisible,
-      versionLabel: information.versionLabel, updates: updates.state,
+      launchAtLogin: host.launchAtLogin, launchAtLoginEnabled: host.canSetLaunchAtLogin,
+      loginCaption: host.loginCaption, updates: updates.state,
       waitingForUpdate: host.waitingForUpdate)
   }
 
@@ -98,7 +96,7 @@ import MonoPodsRuntime
     }
     switch command {
     case .launchAtLogin: host.setLaunchAtLogin(!host.launchAtLogin)
-    case .hideMenuBarIcon: host.setMenuVisible(!host.menuVisible)
+    case .hideMenuBarIcon: host.setMenuVisible(false)
     case .automaticUpdates: updates.setAutomaticChecks(!updates.state.automaticChecks)
     case .checkForUpdates: updates.checkForUpdates()
     case .about: about.show()

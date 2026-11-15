@@ -1,6 +1,6 @@
 import Foundation
 
-/// Bundle metadata shared by the version menu item and the About window.
+/// Bundle metadata of the About window.
 public struct AppInformation: Equatable, Sendable {
   public let name: String
   public let version: String?
@@ -15,12 +15,6 @@ public struct AppInformation: Equatable, Sendable {
     name = text("CFBundleName") ?? "MonoPods"
     version = text("CFBundleShortVersionString")
     copyright = text("NSHumanReadableCopyright")
-  }
-
-  /// The version line of the menu. The build number is never shown.
-  public var versionLabel: String {
-    guard let version else { return Localized.text("Version Unavailable") }
-    return Localized.format("Version %@", version)
   }
 
   /// The version line of the About window, in English in every language.
