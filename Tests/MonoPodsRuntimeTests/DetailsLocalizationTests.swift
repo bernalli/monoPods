@@ -46,13 +46,14 @@ private let expectedLines: [String: [String]] = [
     "Detección automática de oreja: Desconocida", "Salida de audio: Ninguna", "Modelo: Ninguno",
   ],
   "fr": [
-    "Détection automatique des oreilles : Activée",
-    "Détection automatique des oreilles : Désactivée",
-    "Détection automatique des oreilles : Inconnue", "Sortie audio : Aucune", "Modèle : Aucun",
+    "Détection automatique des oreilles\u{00A0}: Activée",
+    "Détection automatique des oreilles\u{00A0}: Désactivée",
+    "Détection automatique des oreilles\u{00A0}: Inconnue", "Sortie audio\u{00A0}: Aucune",
+    "Modèle\u{00A0}: Aucun",
   ],
   "de": [
     "Automatische Ohrerkennung: Ein", "Automatische Ohrerkennung: Aus",
-    "Automatische Ohrerkennung: Unbekannt", "Audioausgang: Keiner", "Modell: Keines",
+    "Automatische Ohrerkennung: Unbekannt", "Audioausgabe: Keine", "Modell: Keines",
   ],
   "pt-BR": [
     "Detecção automática de ouvido: Ativada", "Detecção automática de ouvido: Desativada",

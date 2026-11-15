@@ -30,7 +30,7 @@
 "Details" = "詳細";
 "Diagnostic persistence failed" = "診断データの保存に失敗しました";
 "Don't Check" = "確認しない";
-"Ear Detection Unavailable" = "装着検出を利用できません";
+"Ear Detection Unavailable" = "耳検出を利用できません";
 "Hide Menu Bar Icon" = "メニューバーのアイコンを非表示";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "MonoPodsの使用をやめる場合は、Bluetooth設定で自動耳検出をオフにしてください。";
 "Installing Update…" = "アップデートをインストール中…";
@@ -44,7 +44,7 @@
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "MonoPodsはステレオへの復帰を確認できませんでした。モノラルのままの可能性があります。もう一度試すにはMonoPodsを開き直してください。";
 "MonoPods restarted after an error or an incomplete quit." = "MonoPodsはエラーまたは不完全な終了のあとに再起動しました。";
 "MonoPods restarts when it is done." = "完了するとMonoPodsが再起動します。";
-"Move MonoPods to Applications to launch at login." = "ログイン時に起動するには、MonoPodsを“アプリケーション”に移動してください。";
+"Move MonoPods to Applications to launch at login." = "ログイン時に開くには、MonoPodsを“アプリケーション”に移動してください。";
 "No AirPods Audio Output" = "AirPodsのオーディオ出力なし";
 "No AirPods in Ear" = "AirPodsは装着されていません";
 "No Bluetooth output" = "Bluetooth出力なし";
@@ -75,7 +75,7 @@
 "Unavailable (treated as off)" = "利用不可（オフとして扱います）";
 "Unknown" = "不明";
 "Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "アップデートが完了しなかった場合にのみ使用してください。MonoPodsはインストール済みのバージョンを再起動します。その後、もう一度“アップデートを確認…”を選択するか、ディスクイメージからMonoPodsを再インストールしてください。";
-"Waiting for Ear Detection" = "装着検出を待機中";
+"Waiting for Ear Detection" = "耳検出を待機中";
 "Waiting for a reliable connection." = "信頼できる接続を待機中です。";
 "Waiting for the command owner" = "コマンドの管理プロセスを待機中";
 "Waiting for verified stream transport" = "検証済みのストリームを待機中";

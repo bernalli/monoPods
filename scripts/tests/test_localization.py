@@ -98,17 +98,17 @@ REVIEWED_VALUES = {
     ('es', 'Localizable', 'Audio Output: None'): 'Salida de audio: Ninguna',
     ('es', 'Localizable', 'Model: None'): 'Modelo: Ninguno',
     ('fr', 'Localizable', 'Automatic Ear Detection: On'):
-        'Détection automatique des oreilles : Activée',
+        'Détection automatique des oreilles\u00a0: Activée',
     ('fr', 'Localizable', 'Automatic Ear Detection: Off'):
-        'Détection automatique des oreilles : Désactivée',
+        'Détection automatique des oreilles\u00a0: Désactivée',
     ('fr', 'Localizable', 'Automatic Ear Detection: Unknown'):
-        'Détection automatique des oreilles : Inconnue',
-    ('fr', 'Localizable', 'Audio Output: None'): 'Sortie audio : Aucune',
-    ('fr', 'Localizable', 'Model: None'): 'Modèle : Aucun',
+        'Détection automatique des oreilles\u00a0: Inconnue',
+    ('fr', 'Localizable', 'Audio Output: None'): 'Sortie audio\u00a0: Aucune',
+    ('fr', 'Localizable', 'Model: None'): 'Modèle\u00a0: Aucun',
     ('de', 'Localizable', 'Automatic Ear Detection: On'): 'Automatische Ohrerkennung: Ein',
     ('de', 'Localizable', 'Automatic Ear Detection: Off'): 'Automatische Ohrerkennung: Aus',
     ('de', 'Localizable', 'Automatic Ear Detection: Unknown'): 'Automatische Ohrerkennung: Unbekannt',
-    ('de', 'Localizable', 'Audio Output: None'): 'Audioausgang: Keiner',
+    ('de', 'Localizable', 'Audio Output: None'): 'Audioausgabe: Keine',
     ('de', 'Localizable', 'Model: None'): 'Modell: Keines',
     ('pt-BR', 'Localizable', 'Automatic Ear Detection: On'): 'Detecção automática de ouvido: Ativada',
     ('pt-BR', 'Localizable', 'Automatic Ear Detection: Off'):
@@ -139,11 +139,25 @@ REVIEWED_VALUES = {
     ('fr', 'Localizable', 'Launch at Login'): 'Ouvrir avec la session',
     ('ja', 'Localizable', 'Launch at Login'): 'ログイン時に開く',
     ('zh-Hans', 'Localizable', 'Launch at Login'): '登录时打开',
-    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要跳过更新并继续吗？',
+    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要不更新并继续吗？',
+    # The exit status of the last command is named in full.
+    ('it', 'Localizable', '%@ (Exit %@)'): '%@ (codice di uscita %@)',
+    ('es', 'Localizable', '%@ (Exit %@)'): '%@ (código de salida %@)',
+    ('fr', 'Localizable', '%@ (Exit %@)'): '%@ (code de sortie %@)',
+    ('pt-BR', 'Localizable', '%@ (Exit %@)'): '%@ (código de saída %@)',
 }
 # es and fr name ear detection as Apple does: «de oreja», «des oreilles».
 EAR_DETECTION_TERMS = {'es': ('de oído', 'de oreja'), 'fr': ('de l’oreille', 'des oreilles')}
 
+# Keys whose values are shared verbatim with another app; their style is decided there.
+SHARED_KEYS = (
+    '%@ can check for new versions once a day. You can change this at any time in Options.',
+    'About %@', 'Automatic Updates', 'Check Automatically', 'Check for Updates Automatically?',
+    'Check for Updates…', 'Details', "Don't Check", 'Hide Menu Bar Icon', 'Launch at Login',
+    'Open %@ again to bring it back.', 'Options', 'Quit %@', 'Report an Issue…',
+)
+# French puts a no-break space before these marks.
+FRENCH_HIGH_MARKS = ':;?!'
 # Closed list of texts that name a menu item: the text contains the item's title, identical.
 MENU_REFERENCES = {'See Details for the command result.': 'Details'}
 # The label of the Details line and the reason of Switching Paused name the same setting.
@@ -590,6 +604,18 @@ class LocalizationSourceTests(unittest.TestCase):
             for text, item in MENU_REFERENCES.items():
                 with self.subTest(language=language, text=text):
                     self.assertIn(localizable[item], localizable[text])
+
+    def test_l18_french_uses_no_break_spaces(self):
+        for name in ('Localizable', 'InfoPlist'):
+            for key, value in table('fr', name).items():
+                if name == 'Localizable' and key in SHARED_KEYS:
+                    continue
+                with self.subTest(table=name, key=key):
+                    for index, character in enumerate(value):
+                        if character in FRENCH_HIGH_MARKS and index > 0:
+                            self.assertNotEqual(value[index - 1], ' ')
+                            if value[index - 1].isspace():
+                                self.assertEqual(value[index - 1], '\u00a0')
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

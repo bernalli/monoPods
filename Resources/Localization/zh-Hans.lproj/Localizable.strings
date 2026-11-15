@@ -44,7 +44,7 @@
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "MonoPods 未能确认已恢复立体声。单声道可能仍处于开启状态。请重新打开 MonoPods 再试一次。";
 "MonoPods restarted after an error or an incomplete quit." = "MonoPods 在出错或未完全退出后已重新启动。";
 "MonoPods restarts when it is done." = "完成后 MonoPods 会重新启动。";
-"Move MonoPods to Applications to launch at login." = "将 MonoPods 移到“应用程序”以在登录时启动。";
+"Move MonoPods to Applications to launch at login." = "将 MonoPods 移到“应用程序”以在登录时打开。";
 "No AirPods Audio Output" = "无 AirPods 音频输出";
 "No AirPods in Ear" = "未佩戴 AirPods";
 "No Bluetooth output" = "无蓝牙输出";
@@ -60,7 +60,7 @@
 "Quit %@" = "退出 %@";
 "Report an Issue…" = "报告问题…";
 "Resume" = "继续";
-"Resume Without Updating?" = "要跳过更新并继续吗？";
+"Resume Without Updating?" = "要不更新并继续吗？";
 "Resume Without Updating…" = "不更新并继续…";
 "Runtime evidence could not be saved. Automation is blocked." = "无法保存运行时数据。自动化已被阻止。";
 "See Details for the command result." = "请在“详细信息”中查看命令结果。";

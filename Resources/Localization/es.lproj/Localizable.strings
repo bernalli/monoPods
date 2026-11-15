@@ -1,4 +1,4 @@
-"%@ (Exit %@)" = "%@ (salida %@)";
+"%@ (Exit %@)" = "%@ (código de salida %@)";
 "%@ can check for new versions once a day. You can change this at any time in Options." = "%@ puede buscar nuevas versiones una vez al día. Puedes cambiarlo en cualquier momento en Opciones.";
 "About %@" = "Acerca de %@";
 "AirPods Max Not Supported" = "AirPods Max no compatibles";
@@ -69,7 +69,7 @@
 "Status: %@" = "Estado: %@";
 "Stereo" = "Estéreo";
 "Switching Paused" = "Cambio en pausa";
-"The login item could not be updated." = "No se ha podido actualizar el ítem de inicio de sesión.";
+"The login item could not be updated." = "No se ha podido actualizar el ítem de inicio.";
 "Turn it on in Bluetooth Settings." = "Actívala en los ajustes de Bluetooth.";
 "Two AirPods in Use" = "Dos AirPods en uso";
 "Unavailable (treated as off)" = "No disponible (se considera desactivado)";

@@ -4,11 +4,11 @@
 "AirPods Max Not Supported" = "AirPods Max nicht unterstützt";
 "AirPods Max have no ear detection." = "AirPods Max haben keine Ohrerkennung.";
 "AirPods in Use: %@" = "AirPods in Verwendung: %@";
-"An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "Ein Audiobefehl ist wiederholt fehlgeschlagen. Automatische Versuche für dieses Ziel sind blockiert. Wenn das Umschalten nicht wieder startet, beende MonoPods und öffne es erneut.";
+"An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "Ein Audiobefehl ist wiederholt fehlgeschlagen. Automatische Versuche für diesen Modus sind blockiert. Wenn das Umschalten nicht wieder startet, beende MonoPods und öffne es erneut.";
 "An update is being installed. MonoPods restarts when the new version is in place." = "Ein Update wird installiert. MonoPods startet neu, sobald die neue Version bereit ist.";
 "Audio Change Failed" = "Audiowechsel fehlgeschlagen";
-"Audio Output: %@" = "Audioausgang: %@";
-"Audio Output: None" = "Audioausgang: Keiner";
+"Audio Output: %@" = "Audioausgabe: %@";
+"Audio Output: None" = "Audioausgabe: Keine";
 "Automatic Ear Detection Off" = "Automatische Ohrerkennung aus";
 "Automatic Ear Detection is off. Turn it on in Bluetooth Settings to use MonoPods." = "Die automatische Ohrerkennung ist aus. Aktiviere sie in den Bluetooth-Einstellungen, um MonoPods zu verwenden.";
 "Automatic Ear Detection: Off" = "Automatische Ohrerkennung: Aus";

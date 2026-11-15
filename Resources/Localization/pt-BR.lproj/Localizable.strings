@@ -1,4 +1,4 @@
-"%@ (Exit %@)" = "%@ (saída %@)";
+"%@ (Exit %@)" = "%@ (código de saída %@)";
 "%@ can check for new versions once a day. You can change this at any time in Options." = "O %@ pode buscar novas versões uma vez por dia. Você pode alterar isso a qualquer momento em Opções.";
 "About %@" = "Sobre o %@";
 "AirPods Max Not Supported" = "AirPods Max não compatíveis";
