@@ -15,8 +15,8 @@
 "Automatic Ear Detection: On" = "自动人耳检测：开启";
 "Automatic Ear Detection: Unknown" = "自动人耳检测：未知";
 "Automatic restart is not active until the next login." = "自动重启要到下次登录后才会生效。";
-"Automation Blocked" = "自动化已阻止";
-"Automation blocked; recovery evidence needs review" = "自动化已阻止；需要检查恢复数据";
+"Automation Blocked" = "自动化已被阻止";
+"Automation blocked; recovery evidence needs review" = "自动化已被阻止；需要检查恢复数据";
 "Cancel" = "取消";
 "Check Automatically" = "自动检查";
 "Check for Updates Automatically" = "自动检查更新";
@@ -60,7 +60,7 @@
 "Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "请退出并重新打开 MonoPods。如果仍被阻止，请选择“报告问题…”。";
 "Report an Issue…" = "报告问题…";
 "Resume" = "继续";
-"Resume Without Updating?" = "要不更新并继续吗？";
+"Resume Without Updating?" = "是否不更新并继续？";
 "Resume Without Updating…" = "不更新并继续…";
 "Runtime evidence could not be saved. Automation is blocked." = "无法保存运行时数据。自动化已被阻止。";
 "See Details for the command result." = "请在“详细信息”中查看命令结果。";

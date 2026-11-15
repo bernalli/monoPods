@@ -4,7 +4,7 @@
 "AirPods Max Not Supported" = "AirPods Max nicht unterstützt";
 "AirPods Max have no ear detection." = "AirPods Max haben keine Ohrerkennung.";
 "AirPods in Use: %@" = "AirPods in Verwendung: %@";
-"An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "Ein Audiobefehl ist wiederholt fehlgeschlagen. Automatische Versuche für diesen Modus sind blockiert. Wenn das Umschalten nicht wieder startet, beende MonoPods und öffne es erneut.";
+"An audio command failed repeatedly. Automatic attempts for this target are blocked. If switching does not resume, quit and reopen MonoPods." = "Ein Audiobefehl ist wiederholt fehlgeschlagen. Automatische Versuche für diesen Modus sind blockiert. Wenn das Umschalten nicht fortgesetzt wird, beende MonoPods und öffne es erneut.";
 "An update is being installed. MonoPods restarts when the new version is in place." = "Ein Update wird installiert. MonoPods startet neu, sobald die neue Version bereit ist.";
 "Audio Change Failed" = "Audiowechsel fehlgeschlagen";
 "Audio Output: %@" = "Audioausgabe: %@";

@@ -57,7 +57,7 @@
 "Open Bluetooth Settings" = "Abrir ajustes de Bluetooth";
 "Options" = "Opciones";
 "Quit %@" = "Salir de %@";
-"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Sal de MonoPods y vuelve a abrirlo. Si sigue bloqueado, elige Informar de un problema…";
+"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Sal de MonoPods y vuelve a abrirlo. Si sigue bloqueado, elige “Informar de un problema…”.";
 "Report an Issue…" = "Informar de un problema…";
 "Resume" = "Reanudar";
 "Resume Without Updating?" = "¿Reanudar sin actualizar?";
@@ -74,7 +74,7 @@
 "Two AirPods in Use" = "Dos AirPods en uso";
 "Unavailable (treated as off)" = "No disponible (se considera desactivado)";
 "Unknown" = "Desconocido";
-"Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "Úsalo solo si la actualización no se ha completado. MonoPods reinicia la versión instalada; después, vuelve a elegir Buscar actualizaciones… o reinstala MonoPods desde la imagen de disco.";
+"Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "Úsalo solo si la actualización no se ha completado. MonoPods reinicia la versión instalada; después, vuelve a elegir “Buscar actualizaciones…” o reinstala MonoPods desde la imagen de disco.";
 "Waiting for Ear Detection" = "Esperando la detección de oreja";
 "Waiting for a reliable connection." = "Esperando una conexión fiable.";
 "Waiting for the command owner" = "Esperando al gestor de comandos";

@@ -38,12 +38,12 @@
 "Model: %@" = "Modèle : %@";
 "Model: None" = "Modèle : Aucun";
 "Mono" = "Mono";
-"Mono Audio is on in Accessibility settings." = "L’audio mono est activé dans les réglages d’Accessibilité.";
+"Mono Audio is on in Accessibility settings." = "L’audio mono est activé dans les réglages Accessibilité.";
 "Mono Audio: %@" = "Audio mono : %@";
 "MonoPods did not confirm the return to Stereo. Mono may stay on. Reopen MonoPods to try again." = "MonoPods n’a pas confirmé le retour en stéréo. Le mono peut rester activé. Rouvrez MonoPods pour réessayer.";
 "MonoPods restarted after an error or an incomplete quit." = "MonoPods a redémarré après une erreur ou une fermeture incomplète.";
 "MonoPods restarts when it is done." = "MonoPods redémarre une fois l’opération terminée.";
-"Move MonoPods to Applications to launch at login." = "Placez MonoPods dans Applications pour l’ouvrir à la connexion.";
+"Move MonoPods to Applications to launch at login." = "Placez MonoPods dans Applications pour l’ouvrir avec la session.";
 "No AirPods Audio Output" = "Aucune sortie audio AirPods";
 "No AirPods in Ear" = "Aucun AirPod dans l’oreille";
 "No Bluetooth output" = "Aucune sortie Bluetooth";
@@ -57,7 +57,7 @@
 "Open Bluetooth Settings" = "Ouvrir les réglages Bluetooth";
 "Options" = "Options";
 "Quit %@" = "Quitter %@";
-"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Quittez MonoPods puis rouvrez-le. S’il reste bloqué, choisissez Signaler un problème…";
+"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Quittez MonoPods puis rouvrez-le. S’il reste bloqué, choisissez « Signaler un problème… ».";
 "Report an Issue…" = "Signaler un problème…";
 "Resume" = "Reprendre";
 "Resume Without Updating?" = "Reprendre sans mettre à jour ?";
@@ -74,7 +74,7 @@
 "Two AirPods in Use" = "Deux AirPods utilisés";
 "Unavailable (treated as off)" = "Indisponible (considéré comme désactivé)";
 "Unknown" = "Inconnu";
-"Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "N’utilisez cette option que si la mise à jour n’a pas abouti. MonoPods redémarre la version installée ; choisissez ensuite de nouveau Rechercher les mises à jour… ou réinstallez MonoPods depuis l’image disque.";
+"Use this only if the update did not complete. MonoPods restarts the installed version; then choose Check for Updates… again or reinstall MonoPods from the disk image." = "N’utilisez cette option que si la mise à jour n’a pas abouti. MonoPods redémarre la version installée ; choisissez ensuite de nouveau « Rechercher les mises à jour… » ou réinstallez MonoPods depuis l’image disque.";
 "Waiting for Ear Detection" = "En attente de la détection des oreilles";
 "Waiting for a reliable connection." = "En attente d’une connexion fiable.";
 "Waiting for the command owner" = "En attente du gestionnaire des commandes";

@@ -149,7 +149,7 @@ REVIEWED_VALUES = {
     ('fr', 'Localizable', 'Launch at Login'): 'Ouvrir avec la session',
     ('ja', 'Localizable', 'Launch at Login'): 'ログイン時に開く',
     ('zh-Hans', 'Localizable', 'Launch at Login'): '登录时打开',
-    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '要不更新并继续吗？',
+    ('zh-Hans', 'Localizable', 'Resume Without Updating?'): '是否不更新并继续？',
     # The exit status of the last command is named in full.
     ('it', 'Localizable', '%@ (Exit %@)'): '%@ (codice di uscita %@)',
     ('es', 'Localizable', '%@ (Exit %@)'): '%@ (código de salida %@)',

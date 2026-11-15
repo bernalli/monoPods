@@ -54,13 +54,13 @@
 "On" = "Ativado";
 "One AirPod in Use" = "Um AirPod em Uso";
 "Open %@ again to bring it back." = "Abra o %@ novamente para exibi-lo.";
-"Open Bluetooth Settings" = "Abrir ajustes de Bluetooth";
+"Open Bluetooth Settings" = "Abrir Ajustes de Bluetooth";
 "Options" = "Opções";
 "Quit %@" = "Encerrar %@";
 "Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Encerre e reabra o MonoPods. Se continuar bloqueado, escolha Relatar um Problema…";
 "Report an Issue…" = "Relatar um Problema…";
 "Resume" = "Retomar";
-"Resume Without Updating?" = "Retomar sem atualizar?";
+"Resume Without Updating?" = "Retomar sem Atualizar?";
 "Resume Without Updating…" = "Retomar sem Atualizar…";
 "Runtime evidence could not be saved. Automation is blocked." = "Não foi possível salvar os dados de execução. A automação está bloqueada.";
 "See Details for the command result." = "Veja Detalhes para o resultado do comando.";
