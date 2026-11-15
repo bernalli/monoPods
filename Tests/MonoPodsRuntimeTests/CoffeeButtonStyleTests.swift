@@ -48,6 +48,18 @@ private func alpha(_ bitmap: NSBitmapImageRep, _ x: Int, _ y: Int) -> CGFloat {
     // The border reaches the middle of the left and right edges.
     #expect(alpha(bitmap, 0, height / 2) > 0, "\(name.rawValue) left edge")
     #expect(alpha(bitmap, width - 1, height / 2) > 0, "\(name.rawValue) right edge")
+    // Small rounded corners also pass those checks. Check the curved shoulders
+    // away from the midpoint, where a capsule leaves the side pixels empty.
+    let shoulder = height / 5
+    for y in [shoulder, height - 1 - shoulder] {
+      #expect(alpha(bitmap, 0, y) == 0, "\(name.rawValue) left shoulder \(y)")
+      #expect(alpha(bitmap, width - 1, y) == 0, "\(name.rawValue) right shoulder \(y)")
+    }
+    // An ellipse has no straight horizontal borders at these positions.
+    for x in [width / 4, 3 * width / 4] {
+      #expect(alpha(bitmap, x, 0) > 0, "\(name.rawValue) top edge \(x)")
+      #expect(alpha(bitmap, x, height - 1) > 0, "\(name.rawValue) bottom edge \(x)")
+    }
     // Inside the border and before the label: only the faint background.
     let inside = Int((4 * scale).rounded())
     let fill = try #require(bitmap.colorAt(x: inside, y: height / 2)?.usingColorSpace(.sRGB))
