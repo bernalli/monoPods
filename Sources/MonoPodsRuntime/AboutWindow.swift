@@ -73,9 +73,10 @@ struct AboutView: View {
           .padding(.top, 10)
       }
       Button(action: openSponsors) {
-        Label(AboutText.sponsor, systemImage: "cup.and.saucer")
+        Label(AboutText.sponsor, systemImage: "cup.and.saucer.fill")
       }
-      .controlSize(.small)
+      .buttonStyle(CoffeeButtonStyle())
+      .focusEffectDisabled()
       .padding(.top, 14)
     }
     .multilineTextAlignment(.center)

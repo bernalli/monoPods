@@ -159,5 +159,28 @@ class UpdateChannelTests(unittest.TestCase):
         self.assertEqual(feed, rules['PRODUCTION_FEED_URL'])
 
 
+class SponsorButtonTests(unittest.TestCase):
+    STYLE = ROOT / 'Sources/MonoPodsRuntime/CoffeeButtonStyle.swift'
+    ABOUT = ROOT / 'Sources/MonoPodsRuntime/AboutWindow.swift'
+
+    def test_the_coffee_style_is_self_contained(self):
+        # Another app copies the file byte for byte: no type or text of MonoPods inside.
+        text = self.STYLE.read_text()
+        self.assertEqual(re.findall(r'^import (\S+)$', text, re.M), ['AppKit', 'SwiftUI'])
+        self.assertIn('struct CoffeeButtonStyle: ButtonStyle {', text)
+        for word in ('Localized', 'MonoPods', 'AboutText'):
+            with self.subTest(word=word):
+                self.assertNotIn(word, text)
+
+    def test_the_sponsor_button_uses_the_capsule_style(self):
+        text = self.ABOUT.read_text()
+        start = text.index('Button(action: openSponsors)')
+        button = text[start:text.index('.padding(.top, 14)', start)]
+        self.assertIn('Label(AboutText.sponsor, systemImage: "cup.and.saucer.fill")', button)
+        self.assertIn('.buttonStyle(CoffeeButtonStyle())', button)
+        self.assertIn('.focusEffectDisabled()', button)
+        self.assertNotIn('.controlSize(', button)
+
+
 if __name__ == '__main__':
     unittest.main()
