@@ -20,19 +20,22 @@ INSTALL_STEPS = [
 SIGNED = 'MonoPods is signed with a Developer ID and notarized by Apple.'
 README_UPDATES = (
     'On first launch it asks whether to check for updates automatically, once a day. You can '
-    'change this later in Options › Automatic Updates. An update is installed only when you '
+    'change this later in Options › Check for Updates Automatically. An update is installed '
+    'only when you '
     'choose Install and Relaunch.')
 NETWORK_SENTENCE = ('Update checks and update downloads contact GitHub, which receives your '
                     'IP address and the app '
                     'version; MonoPods makes no other network requests.')
 UNSIGNED_PHRASES = ('Open Anyway', 'is not notarized', 'signed ad hoc')
+MONO_AUDIO_SENTENCE = ('If Mono Audio is already on in Accessibility settings, MonoPods leaves '
+                       'the sound as it is and the menu shows Switching Paused.')
 SYSTEM_LOG = 'MonoPods reads local system-log events for the current Bluetooth audio output.'
 TESTED_SETUP = 'The tested setup reported for this project is AirPods Pro 2 on macOS 27.2.'
 AUTOMATIC_MODE_PHRASES = ('retries at the next launch', 'Enable Automatic Updates', 'Not Now',
                           'by itself, ',
                           'downloads and installs new versions by itself', 'this takes seconds')
-RELEASE_CHECK = ('MonoPods checks for updates when the user asks or, with Automatic Updates on, '
-                 'about once a day. '
+RELEASE_CHECK = ('MonoPods checks for updates when the user asks or, with Check for Updates '
+                 'Automatically on, about once a day. '
                  'To verify a release, install the previous release, choose Check for Updates… '
                  'in its menu and install the offered update.')
 TECHNICAL_UPDATES = [
@@ -45,12 +48,12 @@ TECHNICAL_UPDATES = [
     'active, including the download.',
     'If the update cannot start in time, the app keeps working, and the user can check again '
     'after the next launch.',
-    'Sparkle checks for updates when the user chooses Check for Updates… and, if Automatic '
-    'Updates is on, about once a day.',
+    'Sparkle checks for updates when the user chooses Check for Updates… and, if Check for '
+    'Updates Automatically is on, about once a day.',
     'At every launch, the app turns off Sparkle\'s automatic downloads.',
     'If automatic downloads are turned on later, the app turns them off again.',
-    'The app allows a scheduled check only while Automatic Updates is on; every update installs '
-    'only after the user chooses Install and Relaunch.',
+    'The app allows a scheduled check only while Check for Updates Automatically is on; every '
+    'update installs only after the user chooses Install and Relaunch.',
     'After a crash, the next owner performs journal recovery before resuming operation or '
     'updates.',
     'During replacement, an old version restarted by the launch agent remains inactive.',
@@ -143,6 +146,18 @@ class ReadmeTests(unittest.TestCase):
         command = found[0].replace('\\u{2026}', '…')
         self.assertIn(f'- **{command}** looks for a new version at any time.',
                       section(self.lines, 'Use'))
+
+    def test_use_names_mono_audio_as_the_menu_does(self):
+        self.assertIn(MONO_AUDIO_SENTENCE, joined(section(self.lines, 'Use')))
+        source = (ROOT / 'Sources/MonoPodsRuntime/MenuPresentation.swift').read_text()
+        self.assertIn('Localized.format("Mono Audio: %@"', source)
+
+    def test_install_names_the_switch_the_app_shows(self):
+        source = (ROOT / 'Sources/MonoPodsRuntime/MenuLayout.swift').read_text()
+        found = re.findall(
+            r'static var automaticUpdates: String \{ Localized\.text\("([^"]+)"\) \}', source)
+        self.assertEqual(len(found), 1)
+        self.assertIn(f'Options › {found[0]}', joined(section(self.lines, 'Install')))
 
     def test_network_statement_admits_update_checks(self):
         self.assertIn(NETWORK_SENTENCE, joined(section(self.lines, 'Install')))
