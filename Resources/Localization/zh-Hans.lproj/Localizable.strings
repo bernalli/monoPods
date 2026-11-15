@@ -18,7 +18,6 @@
 "Automatic switching is blocked; recovery evidence needs review." = "自动切换已被阻止；需要检查恢复数据。";
 "Automation Blocked" = "自动化已阻止";
 "Automation blocked; recovery evidence needs review" = "自动化已阻止；需要检查恢复数据";
-"Buy Me a Coffee" = "请我喝杯咖啡";
 "Cancel" = "取消";
 "Check Automatically" = "自动检查";
 "Check for Updates Automatically?" = "要自动检查更新吗？";
@@ -76,7 +75,6 @@
 "Version %@ (%@)" = "版本 %@（%@）";
 "Version Unavailable" = "版本不可用";
 "Version Unavailable (Build %@)" = "版本不可用（构建版本 %@）";
-"View %@ on GitHub" = "在 GitHub 上查看 %@";
 "Waiting for Ear Detection" = "正在等待入耳检测";
 "Waiting for MonoPods…" = "正在等待 MonoPods…";
 "Waiting for a reliable ear detection connection." = "正在等待可靠的入耳检测连接。";

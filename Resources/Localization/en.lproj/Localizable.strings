@@ -18,7 +18,6 @@
 "Automatic switching is blocked; recovery evidence needs review." = "Automatic switching is blocked; recovery evidence needs review.";
 "Automation Blocked" = "Automation Blocked";
 "Automation blocked; recovery evidence needs review" = "Automation blocked; recovery evidence needs review";
-"Buy Me a Coffee" = "Buy Me a Coffee";
 "Cancel" = "Cancel";
 "Check Automatically" = "Check Automatically";
 "Check for Updates Automatically?" = "Check for Updates Automatically?";
@@ -76,7 +75,6 @@
 "Version %@ (%@)" = "Version %@ (%@)";
 "Version Unavailable" = "Version Unavailable";
 "Version Unavailable (Build %@)" = "Version Unavailable (Build %@)";
-"View %@ on GitHub" = "View %@ on GitHub";
 "Waiting for Ear Detection" = "Waiting for Ear Detection";
 "Waiting for MonoPods…" = "Waiting for MonoPods…";
 "Waiting for a reliable ear detection connection." = "Waiting for a reliable ear detection connection.";

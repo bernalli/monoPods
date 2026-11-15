@@ -28,4 +28,14 @@ public struct AppInformation: Equatable, Sendable {
     case (.none, .none): return Localized.text("Version Unavailable")
     }
   }
+
+  /// The version line of the About window, in English in every language.
+  public var englishVersionLabel: String {
+    switch (version, build) {
+    case (.some(let version), .some(let build)): return "Version \(version) (\(build))"
+    case (.some(let version), .none): return "Version \(version)"
+    case (.none, .some(let build)): return "Version Unavailable (Build \(build))"
+    case (.none, .none): return "Version Unavailable"
+    }
+  }
 }

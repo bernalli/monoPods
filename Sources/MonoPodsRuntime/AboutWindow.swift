@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Visible text of the About window.
+/// Visible text of the About window, which stays in English in every language. The values are
+/// literals that no table translates, and the view shows them as plain strings, which SwiftUI
+/// does not look up.
 public enum AboutText {
-  public static var windowTitle: String { Localized.format("About %@", "MonoPods") }
-  public static var gitHubHelp: String { Localized.format("View %@ on GitHub", "MonoPods") }
-  public static var sponsor: String { Localized.text("Buy Me a Coffee") }
+  public static let windowTitle = "About MonoPods"
+  public static let gitHubHelp = "View MonoPods on GitHub"
+  public static let sponsor = "Buy Me a Coffee"
 }
 
 public enum AboutArtwork {
@@ -46,7 +48,7 @@ struct AboutView: View {
         .font(Font(titleFont))
         .padding(.top, 10)
       HStack(spacing: 5) {
-        Text(information.versionLabel)
+        Text(information.englishVersionLabel)
         if let gitHubMark {
           Button(action: openRepository) {
             Image(nsImage: gitHubMark)

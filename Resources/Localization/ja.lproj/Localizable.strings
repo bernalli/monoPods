@@ -18,7 +18,6 @@
 "Automatic switching is blocked; recovery evidence needs review." = "自動切り替えはブロックされています。復旧データの確認が必要です。";
 "Automation Blocked" = "自動化はブロック中";
 "Automation blocked; recovery evidence needs review" = "自動化はブロック中。復旧データの確認が必要です";
-"Buy Me a Coffee" = "コーヒーをおごる";
 "Cancel" = "キャンセル";
 "Check Automatically" = "自動的に確認";
 "Check for Updates Automatically?" = "アップデートを自動的に確認しますか？";
@@ -76,7 +75,6 @@
 "Version %@ (%@)" = "バージョン %@（%@）";
 "Version Unavailable" = "バージョン不明";
 "Version Unavailable (Build %@)" = "バージョン不明（ビルド %@）";
-"View %@ on GitHub" = "GitHubで%@を表示";
 "Waiting for Ear Detection" = "装着検出を待機中";
 "Waiting for MonoPods…" = "MonoPodsを待機中…";
 "Waiting for a reliable ear detection connection." = "信頼できる装着検出の接続を待機中です。";

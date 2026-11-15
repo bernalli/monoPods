@@ -56,6 +56,16 @@ STATE_TEXTS = {
         'switching does not resume, quit and reopen MonoPods.',
     ),
 }
+# The About window stays in English in every language: its texts are literals, never looked up.
+ABOUT = SOURCES / 'MonoPodsRuntime/AboutWindow.swift'
+ABOUT_TEXTS = {
+    'windowTitle': 'About MonoPods', 'gitHubHelp': 'View MonoPods on GitHub',
+    'sponsor': 'Buy Me a Coffee',
+}
+# Keys that only the About window used; the menu keeps `About %@` and the version lines.
+ABOUT_ONLY_KEYS = ('Buy Me a Coffee', 'View %@ on GitHub')
+MENU_KEYS_SHARED_WITH_ABOUT = ('About %@', 'Version %@ (%@)', 'Version %@',
+                               'Version Unavailable (Build %@)', 'Version Unavailable')
 # The only files that may pass a value, not a literal, to Localized.
 NON_LITERAL_FILES = ('MenuPresentation.swift', 'MenuLayout.swift', 'NoticePresenter.swift')
 
@@ -433,6 +443,23 @@ class LocalizationSourceTests(unittest.TestCase):
         for key in sorted(table(ENGLISH, 'Localizable')):
             with self.subTest(key=key):
                 self.assertIn(key, allowed)
+
+    def test_l11_the_about_window_stays_english(self):
+        source = ABOUT.read_text()
+        self.assertNotIn('Localized.', source)
+        for name, text in ABOUT_TEXTS.items():
+            with self.subTest(name=name):
+                self.assertIn(f'public static let {name} = "{text}"', source)
+        self.assertIn('Text(information.englishVersionLabel)', source)
+        self.assertNotIn('information.versionLabel', source)
+        for language in LANGUAGES:
+            localizable = table(language, 'Localizable')
+            for key in ABOUT_ONLY_KEYS:
+                with self.subTest(language=language, key=key):
+                    self.assertNotIn(key, localizable)
+            for key in MENU_KEYS_SHARED_WITH_ABOUT:
+                with self.subTest(language=language, key=key):
+                    self.assertIn(key, localizable)
 
     def test_l10_info_plist_declares_the_languages(self):
         info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())

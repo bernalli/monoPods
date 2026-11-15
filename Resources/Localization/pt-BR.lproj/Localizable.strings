@@ -18,7 +18,6 @@
 "Automatic switching is blocked; recovery evidence needs review." = "A alternância automática está bloqueada; os dados de recuperação precisam ser revisados.";
 "Automation Blocked" = "Automação bloqueada";
 "Automation blocked; recovery evidence needs review" = "Automação bloqueada; os dados de recuperação precisam ser revisados";
-"Buy Me a Coffee" = "Me pague um café";
 "Cancel" = "Cancelar";
 "Check Automatically" = "Buscar Automaticamente";
 "Check for Updates Automatically?" = "Buscar Atualizações Automaticamente?";
@@ -76,7 +75,6 @@
 "Version %@ (%@)" = "Versão %@ (%@)";
 "Version Unavailable" = "Versão indisponível";
 "Version Unavailable (Build %@)" = "Versão indisponível (compilação %@)";
-"View %@ on GitHub" = "Ver o %@ no GitHub";
 "Waiting for Ear Detection" = "Aguardando a detecção de ouvido";
 "Waiting for MonoPods…" = "Aguardando o MonoPods…";
 "Waiting for a reliable ear detection connection." = "Aguardando uma conexão confiável de detecção de ouvido.";
