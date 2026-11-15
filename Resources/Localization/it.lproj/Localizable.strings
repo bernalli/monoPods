@@ -14,12 +14,12 @@
 "Automatic Ear Detection: Off" = "Rilevamento automatico dell’orecchio: Disattivato";
 "Automatic Ear Detection: On" = "Rilevamento automatico dell’orecchio: Attivato";
 "Automatic Ear Detection: Unknown" = "Rilevamento automatico dell’orecchio: Sconosciuto";
-"Automatic Updates" = "Aggiornamenti automatici";
 "Automatic restart is not active until the next login." = "Il riavvio automatico non è attivo fino al prossimo login.";
 "Automation Blocked" = "Automazione bloccata";
 "Automation blocked; recovery evidence needs review" = "Automazione bloccata; i dati di ripristino vanno verificati";
 "Cancel" = "Annulla";
 "Check Automatically" = "Verifica automaticamente";
+"Check for Updates Automatically" = "Verifica automaticamente gli aggiornamenti";
 "Check for Updates Automatically?" = "Verificare automaticamente gli aggiornamenti?";
 "Check for Updates…" = "Verifica aggiornamenti…";
 "Command order cannot be established. Automation and recovery are blocked." = "Impossibile stabilire l’ordine dei comandi. Automazione e ripristino sono bloccati.";

@@ -223,6 +223,10 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   }
 }
 
+@Test func theUpdateChecksSwitchIsNamedLikeTheOtherApp() {
+  #expect(MenuTitle.automaticUpdates == "Check for Updates Automatically")
+}
+
 @Test func automaticUpdatesIsMissingWithoutTheUpdater() throws {
   let rows = MenuLayout.rows(
     for: layoutState(updates: UpdateMenuState(available: false, canCheck: false)))

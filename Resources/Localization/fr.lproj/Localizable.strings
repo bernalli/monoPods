@@ -14,13 +14,13 @@
 "Automatic Ear Detection: Off" = "Détection automatique des oreilles : Désactivée";
 "Automatic Ear Detection: On" = "Détection automatique des oreilles : Activée";
 "Automatic Ear Detection: Unknown" = "Détection automatique des oreilles : Inconnue";
-"Automatic Updates" = "Mises à jour automatiques";
 "Automatic restart is not active until the next login." = "Le redémarrage automatique ne sera actif qu’à la prochaine ouverture de session.";
 "Automation Blocked" = "Automatisation bloquée";
 "Automation blocked; recovery evidence needs review" = "Automatisation bloquée ; les données de récupération doivent être vérifiées";
 "Cancel" = "Annuler";
 "Check Automatically" = "Rechercher automatiquement";
-"Check for Updates Automatically?" = "Rechercher automatiquement les mises à jour ?";
+"Check for Updates Automatically" = "Rechercher automatiquement les mises à jour";
+"Check for Updates Automatically?" = "Rechercher automatiquement les mises à jour ?";
 "Check for Updates…" = "Rechercher les mises à jour…";
 "Command order cannot be established. Automation and recovery are blocked." = "Impossible d’établir l’ordre des commandes. L’automatisation et la récupération sont bloquées.";
 "Configuration, manifest or runtime evidence is invalid. Automation is blocked." = "La configuration, le manifeste ou les données d’exécution ne sont pas valides. L’automatisation est bloquée.";

@@ -14,12 +14,12 @@
 "Automatic Ear Detection: Off" = "自動耳検出: オフ";
 "Automatic Ear Detection: On" = "自動耳検出: オン";
 "Automatic Ear Detection: Unknown" = "自動耳検出: 不明";
-"Automatic Updates" = "自動アップデート";
 "Automatic restart is not active until the next login." = "自動再起動は次回のログインまで有効になりません。";
 "Automation Blocked" = "自動化はブロック中";
 "Automation blocked; recovery evidence needs review" = "自動化はブロック中。復旧データの確認が必要です";
 "Cancel" = "キャンセル";
 "Check Automatically" = "自動的に確認";
+"Check for Updates Automatically" = "アップデートを自動的に確認";
 "Check for Updates Automatically?" = "アップデートを自動的に確認しますか？";
 "Check for Updates…" = "アップデートを確認…";
 "Command order cannot be established. Automation and recovery are blocked." = "コマンドの順序を確定できません。自動化と復旧はブロックされています。";

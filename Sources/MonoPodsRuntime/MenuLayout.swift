@@ -73,7 +73,7 @@ public enum MenuTitle {
   public static var details: String { Localized.text("Details") }
   public static var options: String { Localized.text("Options") }
   public static var launchAtLogin: String { Localized.text("Launch at Login") }
-  public static var automaticUpdates: String { Localized.text("Automatic Updates") }
+  public static var automaticUpdates: String { Localized.text("Check for Updates Automatically") }
   public static var hideIcon: String { Localized.text("Hide Menu Bar Icon") }
   public static var hideIconCaption: String {
     Localized.format("Open %@ again to bring it back.", "MonoPods")

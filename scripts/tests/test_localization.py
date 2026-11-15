@@ -1,4 +1,5 @@
 """Localization tables: strict format, the same keys in every language, placeholders, coverage."""
+import json
 from pathlib import Path
 import plistlib
 import re
@@ -18,6 +19,11 @@ KEYED_BY_ENGLISH = ('Localizable', 'AppleStyleUpdateDriver')
 DRIVER = SOURCES / 'MonoPods/AppleStyleUpdateDriver.swift'
 DRIVER_TABLE = 'AppleStyleUpdateDriver'
 BLUETOOTH_KEYS = ('NSBluetoothAlwaysUsageDescription', 'NSBluetoothPeripheralUsageDescription')
+# Texts shared verbatim with another app, copied from its tables.
+SHARED_FIXTURE = ROOT / 'scripts/tests/fixtures/shared-texts.json'
+FIXTURE_TABLES = ('AppleStyleUpdateDriver', 'Localizable')
+# Closed list of English values that differ from their key: (table, key) -> value.
+ENGLISH_VALUES = {('Localizable', "Don't Check"): 'Don’t Check'}
 # Closed list of the values that stay English in one language: (language, key), in every table
 # that has the key.
 SAME_AS_ENGLISH = {
@@ -80,6 +86,8 @@ REMOVED_KEYS = (
     'Waiting for a reliable ear detection connection.',
     # The menu has no version row, and no line under Launch at Login when it works.
     'Version %@', 'Version Unavailable', 'Applies from the next login.',
+    # The update checks switch has the other app's name.
+    'Automatic Updates',
     # Automation Blocked names the remedy.
     'Automatic switching is blocked; recovery evidence needs review.',
 )
@@ -154,9 +162,10 @@ EAR_DETECTION_TERMS = {'es': ('de oído', 'de oreja'), 'fr': ('de l’oreille', 
 # Keys whose values are shared verbatim with another app; their style is decided there.
 SHARED_KEYS = (
     '%@ can check for new versions once a day. You can change this at any time in Options.',
-    'About %@', 'Automatic Updates', 'Check Automatically', 'Check for Updates Automatically?',
-    'Check for Updates…', 'Details', "Don't Check", 'Hide Menu Bar Icon', 'Launch at Login',
-    'Open %@ again to bring it back.', 'Options', 'Quit %@', 'Report an Issue…',
+    'About %@', 'Check Automatically', 'Check for Updates Automatically',
+    'Check for Updates Automatically?', 'Check for Updates…', "Don't Check",
+    'Hide Menu Bar Icon', 'Launch at Login', 'Open %@ again to bring it back.', 'Options',
+    'Quit %@', 'Report an Issue…',
 )
 # French puts a no-break space before these marks.
 FRENCH_HIGH_MARKS = ':;?!'
@@ -264,6 +273,47 @@ def validate(data: bytes) -> list[tuple[str, str]]:
     for key, value in entries:
         check_entry(key, value)
     return entries
+
+
+def _refuse_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise StringsError('duplicate key in the shared fixture')
+    return dict(pairs)
+
+
+def load_shared_fixture(data: bytes) -> dict[str, dict[str, dict[str, str]]]:
+    """The shared texts: exactly the tables and languages, one key set per table, text values."""
+    try:
+        text = data.decode('utf-8')
+    except UnicodeDecodeError as error:
+        raise StringsError('shared fixture is not UTF-8') from error
+    try:
+        document = json.loads(text, object_pairs_hook=_refuse_duplicates)
+    except json.JSONDecodeError as error:
+        raise StringsError(f'shared fixture is not one JSON document: {error}') from error
+    if not isinstance(document, dict) or sorted(document) != sorted(FIXTURE_TABLES):
+        raise StringsError('shared fixture tables')
+    for name in FIXTURE_TABLES:
+        languages = document[name]
+        if not isinstance(languages, dict) or sorted(languages) != sorted(LANGUAGES):
+            raise StringsError(f'shared fixture languages of {name}')
+        keys = None
+        for language in LANGUAGES:
+            entries = languages[language]
+            if not isinstance(entries, dict) or not entries:
+                raise StringsError(f'shared fixture entries of {name} {language}')
+            for value in entries.values():
+                if not isinstance(value, str) or not value:
+                    raise StringsError(f'shared fixture value in {name} {language}')
+            if keys is None:
+                keys = sorted(entries)
+            elif sorted(entries) != keys:
+                raise StringsError(f'shared fixture keys of {name} {language}')
+        for key, value in languages[ENGLISH].items():
+            if value != ENGLISH_VALUES.get((name, key), key):
+                raise StringsError(f'shared fixture English value of {key!r}')
+    return document
 
 
 def table_path(language: str, name: str) -> Path:
@@ -479,7 +529,7 @@ class LocalizationTableTests(unittest.TestCase):
             if name in KEYED_BY_ENGLISH:
                 for key, value in english.items():
                     with self.subTest(table=name, key=key):
-                        self.assertEqual(value, key)
+                        self.assertEqual(value, ENGLISH_VALUES.get((name, key), key))
         plist = table(ENGLISH, 'InfoPlist')
         self.assertEqual(sorted(plist), sorted(BLUETOOTH_KEYS))
         for key in BLUETOOTH_KEYS:
@@ -588,6 +638,85 @@ class LocalizationSourceTests(unittest.TestCase):
                         self.assertNotIn(old, value)
                         if 'detection' in key.lower():
                             self.assertIn(new, value)
+
+    def test_l14_shared_fixture_loader_rejects_malformed_input(self):
+        def document(**changes: object) -> dict:
+            base = {
+                name: {language: {'K': 'K' if language == ENGLISH else f'K {language}'}
+                       for language in LANGUAGES}
+                for name in FIXTURE_TABLES
+            }
+            base.update(changes)
+            return base
+
+        def encode(value: object) -> bytes:
+            return json.dumps(value, ensure_ascii=False).encode('utf-8')
+
+        self.assertEqual(load_shared_fixture(encode(document())), document())
+        missing_language = document()
+        del missing_language['Localizable']['ja']
+        extra_language = document()
+        extra_language['Localizable']['ko'] = {'K': 'K ko'}
+        extra_table = document(InfoPlist={language: {'K': 'K'} for language in LANGUAGES})
+        missing_table = document()
+        del missing_table['AppleStyleUpdateDriver']
+        different_keys = document()
+        different_keys['Localizable']['it'] = {'L': 'L it'}
+        english_differs = document()
+        english_differs['Localizable'][ENGLISH] = {'K': 'Other'}
+        empty_language = document()
+        empty_language['Localizable']['fr'] = {}
+        cases = {
+            'missing language': encode(missing_language),
+            'extra language': encode(extra_language),
+            'extra table': encode(extra_table),
+            'missing table': encode(missing_table),
+            'different keys': encode(different_keys),
+            'English value differs': encode(english_differs),
+            'empty language': encode(empty_language),
+            'not UTF-8': encode(document()).replace(b'K it', b'K \xff'),
+            'two documents': encode(document()) + encode(document()),
+            'top level list': encode([document()]),
+            'top level string': encode('Localizable'),
+            'duplicate table': b'{"Localizable": {}, "Localizable": {}}',
+        }
+        doubled = encode(document())
+        cases['duplicate language'] = doubled.replace(
+            b'"Localizable": {"en": {"K": "K"},',
+            b'"Localizable": {"en": {"K": "K"}, "en": {"K": "K"},', 1)
+        cases['duplicate key'] = doubled.replace(
+            b'"Localizable": {"en": {"K": "K"}',
+            b'"Localizable": {"en": {"K": "K", "K": "K"}', 1)
+        for bad in (None, 1, [], {}, ''):
+            value = document()
+            value['Localizable']['it'] = {'K': bad}
+            cases[f'value {bad!r}'] = encode(value)
+        for name, data in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaises(StringsError):
+                    load_shared_fixture(data)
+        self.assertNotEqual(cases['duplicate language'], doubled)
+        self.assertNotEqual(cases['duplicate key'], doubled)
+
+    def test_l14_shared_texts_match_the_other_app(self):
+        fixture = load_shared_fixture(SHARED_FIXTURE.read_bytes())
+        for name, languages in fixture.items():
+            for language, entries in languages.items():
+                mine = table(language, name)
+                if name == DRIVER_TABLE:
+                    with self.subTest(table=name, language=language):
+                        self.assertEqual(mine, entries)
+                for key, value in entries.items():
+                    with self.subTest(table=name, language=language, key=key):
+                        self.assertEqual(mine.get(key, '').encode('utf-8'), value.encode('utf-8'))
+
+    def test_l14_shared_keys_are_the_closed_list(self):
+        fixture = load_shared_fixture(SHARED_FIXTURE.read_bytes())
+        english = table(ENGLISH, 'Localizable')
+        self.assertEqual(sorted(SHARED_KEYS), sorted(fixture['Localizable'][ENGLISH]))
+        for key in SHARED_KEYS:
+            with self.subTest(key=key):
+                self.assertIn(key, english)
 
     def test_l15_installing_update_is_the_same_in_the_menu_and_the_update_window(self):
         for language in LANGUAGES:

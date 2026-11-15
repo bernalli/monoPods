@@ -14,12 +14,12 @@
 "Automatic Ear Detection: Off" = "自动人耳检测：关闭";
 "Automatic Ear Detection: On" = "自动人耳检测：开启";
 "Automatic Ear Detection: Unknown" = "自动人耳检测：未知";
-"Automatic Updates" = "自动更新";
 "Automatic restart is not active until the next login." = "自动重启要到下次登录后才会生效。";
 "Automation Blocked" = "自动化已阻止";
 "Automation blocked; recovery evidence needs review" = "自动化已阻止；需要检查恢复数据";
 "Cancel" = "取消";
 "Check Automatically" = "自动检查";
+"Check for Updates Automatically" = "自动检查更新";
 "Check for Updates Automatically?" = "要自动检查更新吗？";
 "Check for Updates…" = "检查更新…";
 "Command order cannot be established. Automation and recovery are blocked." = "无法确定命令顺序。自动化和恢复已被阻止。";

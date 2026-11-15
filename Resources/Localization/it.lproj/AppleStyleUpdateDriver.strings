@@ -1,6 +1,6 @@
 "%1$@ %2$@ is available (you have %3$@)." = "È disponibile %1$@ %2$@ (hai la %3$@).";
-"%@ is ready to install." = "%@ è pronta per l’installazione.";
-"%@ is up to date." = "%@ è aggiornata.";
+"%@ is ready to install." = "%@ è pronto per l’installazione.";
+"%@ is up to date." = "%@ è aggiornato.";
 "Cancel" = "Annulla";
 "Checking for Updates…" = "Verifica degli aggiornamenti…";
 "Downloading Update…" = "Download dell’aggiornamento…";

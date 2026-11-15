@@ -14,12 +14,12 @@
 "Automatic Ear Detection: Off" = "Automatische Ohrerkennung: Aus";
 "Automatic Ear Detection: On" = "Automatische Ohrerkennung: Ein";
 "Automatic Ear Detection: Unknown" = "Automatische Ohrerkennung: Unbekannt";
-"Automatic Updates" = "Automatische Updates";
 "Automatic restart is not active until the next login." = "Der automatische Neustart ist erst ab der nächsten Anmeldung aktiv.";
 "Automation Blocked" = "Automatik blockiert";
 "Automation blocked; recovery evidence needs review" = "Automatik blockiert; die Wiederherstellungsdaten müssen geprüft werden";
 "Cancel" = "Abbrechen";
 "Check Automatically" = "Automatisch suchen";
+"Check for Updates Automatically" = "Automatisch nach Updates suchen";
 "Check for Updates Automatically?" = "Automatisch nach Updates suchen?";
 "Check for Updates…" = "Nach Updates suchen …";
 "Command order cannot be established. Automation and recovery are blocked." = "Die Reihenfolge der Befehle lässt sich nicht feststellen. Automatik und Wiederherstellung sind blockiert.";
@@ -34,7 +34,7 @@
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "Wenn du MonoPods nicht mehr verwendest, deaktiviere die automatische Ohrerkennung in den Bluetooth-Einstellungen.";
 "Installing Update…" = "Update wird installiert …";
 "Last Command: %@" = "Letzter Befehl: %@";
-"Launch at Login" = "Beim Anmelden öffnen";
+"Launch at Login" = "Bei der Anmeldung öffnen";
 "Model: %@" = "Modell: %@";
 "Model: None" = "Modell: Keines";
 "Mono" = "Mono";
@@ -53,7 +53,7 @@
 "Off" = "Aus";
 "On" = "Ein";
 "One AirPod in Use" = "Ein AirPod in Verwendung";
-"Open %@ again to bring it back." = "Öffne %@ erneut, um es wieder einzublenden.";
+"Open %@ again to bring it back." = "Öffne %@ erneut, um es einzublenden.";
 "Open Bluetooth Settings" = "Bluetooth-Einstellungen öffnen";
 "Options" = "Optionen";
 "Quit %@" = "%@ beenden";

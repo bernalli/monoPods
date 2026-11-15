@@ -14,12 +14,12 @@
 "Automatic Ear Detection: Off" = "Automatic Ear Detection: Off";
 "Automatic Ear Detection: On" = "Automatic Ear Detection: On";
 "Automatic Ear Detection: Unknown" = "Automatic Ear Detection: Unknown";
-"Automatic Updates" = "Automatic Updates";
 "Automatic restart is not active until the next login." = "Automatic restart is not active until the next login.";
 "Automation Blocked" = "Automation Blocked";
 "Automation blocked; recovery evidence needs review" = "Automation blocked; recovery evidence needs review";
 "Cancel" = "Cancel";
 "Check Automatically" = "Check Automatically";
+"Check for Updates Automatically" = "Check for Updates Automatically";
 "Check for Updates Automatically?" = "Check for Updates Automatically?";
 "Check for Updates…" = "Check for Updates…";
 "Command order cannot be established. Automation and recovery are blocked." = "Command order cannot be established. Automation and recovery are blocked.";
@@ -28,7 +28,7 @@
 "Current Audio: %@ (OSStatus %@)" = "Current Audio: %@ (OSStatus %@)";
 "Details" = "Details";
 "Diagnostic persistence failed" = "Diagnostic persistence failed";
-"Don't Check" = "Don't Check";
+"Don't Check" = "Don’t Check";
 "Ear Detection Unavailable" = "Ear Detection Unavailable";
 "Hide Menu Bar Icon" = "Hide Menu Bar Icon";
 "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings." = "If you stop using MonoPods, turn Automatic Ear Detection off in Bluetooth Settings.";
