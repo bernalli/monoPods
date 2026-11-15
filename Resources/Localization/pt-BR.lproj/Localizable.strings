@@ -16,7 +16,6 @@
 "Automatic Ear Detection: Unknown" = "Detecção automática de ouvido: Desconhecida";
 "Automatic Updates" = "Atualizações Automáticas";
 "Automatic restart is not active until the next login." = "O reinício automático só ficará ativo no próximo início de sessão.";
-"Automatic switching is blocked; recovery evidence needs review." = "A alternância automática está bloqueada; os dados de recuperação precisam ser revisados.";
 "Automation Blocked" = "Automação bloqueada";
 "Automation blocked; recovery evidence needs review" = "Automação bloqueada; os dados de recuperação precisam ser revisados";
 "Cancel" = "Cancelar";
@@ -58,6 +57,7 @@
 "Open Bluetooth Settings" = "Abrir ajustes de Bluetooth";
 "Options" = "Opções";
 "Quit %@" = "Encerrar o %@";
+"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "Encerre e reabra o MonoPods. Se continuar bloqueado, escolha Relatar um problema…";
 "Report an Issue…" = "Relatar um problema…";
 "Resume" = "Retomar";
 "Resume Without Updating?" = "Retomar sem atualizar?";

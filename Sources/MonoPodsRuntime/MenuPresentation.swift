@@ -30,7 +30,8 @@ public enum MenuSituation: CaseIterable, Sendable {
     switch self {
     case .installingUpdate: return Localized.text("MonoPods restarts when it is done.")
     case .blocked:
-      return Localized.text("Automatic switching is blocked; recovery evidence needs review.")
+      return Localized.text(
+        "Quit and reopen MonoPods. If it stays blocked, choose Report an Issue\u{2026}")
     case .commandFailed: return Localized.text("See Details for the command result.")
     case .detectionOff: return Localized.text("Turn it on in Bluetooth Settings.")
     case .detectionUnavailable: return Localized.text("Waiting for a reliable connection.")

@@ -16,7 +16,6 @@
 "Automatic Ear Detection: Unknown" = "自動耳検出: 不明";
 "Automatic Updates" = "自動アップデート";
 "Automatic restart is not active until the next login." = "自動再起動は次回のログインまで有効になりません。";
-"Automatic switching is blocked; recovery evidence needs review." = "自動切り替えはブロックされています。復旧データの確認が必要です。";
 "Automation Blocked" = "自動化はブロック中";
 "Automation blocked; recovery evidence needs review" = "自動化はブロック中。復旧データの確認が必要です";
 "Cancel" = "キャンセル";
@@ -58,6 +57,7 @@
 "Open Bluetooth Settings" = "Bluetooth設定を開く";
 "Options" = "オプション";
 "Quit %@" = "%@を終了";
+"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "MonoPodsを終了してからもう一度開いてください。ブロックが続く場合は、“問題を報告…”を選択してください。";
 "Report an Issue…" = "問題を報告…";
 "Resume" = "再開";
 "Resume Without Updating?" = "アップデートせずに再開しますか？";

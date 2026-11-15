@@ -80,6 +80,8 @@ REMOVED_KEYS = (
     'Waiting for a reliable ear detection connection.',
     # The menu has no version row, and no line under Launch at Login when it works.
     'Version %@', 'Version Unavailable', 'Applies from the next login.',
+    # Automation Blocked names the remedy.
+    'Automatic switching is blocked; recovery evidence needs review.',
 )
 # Closed list of reviewed values: (language, table, key) -> value.
 REVIEWED_VALUES = {
@@ -159,7 +161,10 @@ SHARED_KEYS = (
 # French puts a no-break space before these marks.
 FRENCH_HIGH_MARKS = ':;?!'
 # Closed list of texts that name a menu item: the text contains the item's title, identical.
-MENU_REFERENCES = {'See Details for the command result.': 'Details'}
+MENU_REFERENCES = {
+    'See Details for the command result.': 'Details',
+    'Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…': 'Report an Issue…',
+}
 # The label of the Details line and the reason of Switching Paused name the same setting.
 MONO_AUDIO_LINE = 'Mono Audio: %@'
 MONO_AUDIO_REASON = 'Mono Audio is on in Accessibility settings.'

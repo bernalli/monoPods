@@ -16,7 +16,6 @@
 "Automatic Ear Detection: Unknown" = "自动人耳检测：未知";
 "Automatic Updates" = "自动更新";
 "Automatic restart is not active until the next login." = "自动重启要到下次登录后才会生效。";
-"Automatic switching is blocked; recovery evidence needs review." = "自动切换已被阻止；需要检查恢复数据。";
 "Automation Blocked" = "自动化已阻止";
 "Automation blocked; recovery evidence needs review" = "自动化已阻止；需要检查恢复数据";
 "Cancel" = "取消";
@@ -58,6 +57,7 @@
 "Open Bluetooth Settings" = "打开蓝牙设置";
 "Options" = "选项";
 "Quit %@" = "退出 %@";
+"Quit and reopen MonoPods. If it stays blocked, choose Report an Issue…" = "请退出并重新打开 MonoPods。如果仍被阻止，请选择“报告问题…”。";
 "Report an Issue…" = "报告问题…";
 "Resume" = "继续";
 "Resume Without Updating?" = "要不更新并继续吗？";

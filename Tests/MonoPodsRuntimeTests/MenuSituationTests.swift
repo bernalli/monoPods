@@ -29,7 +29,8 @@ private let approvedRows: [MenuSituation: (String, String?, String)] = [
     "Installing Update\u{2026}", "MonoPods restarts when it is done.", "hourglass"
   ),
   .blocked: (
-    "Automation Blocked", "Automatic switching is blocked; recovery evidence needs review.",
+    "Automation Blocked",
+    "Quit and reopen MonoPods. If it stays blocked, choose Report an Issue\u{2026}",
     "exclamationmark.triangle"
   ),
   .commandFailed: (
