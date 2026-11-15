@@ -354,7 +354,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(set(value), {'v', 'sourceCommit', 'build', 'manifestSha256',
                                      'dmgSha256', 'bundleTreeSha256', 'toolchain', 'createdUTC',
                                      'signingMode'})
-        self.assertEqual(value['signingMode'], 'ad-hoc')
+        self.assertEqual(value['signingMode'], 'developer-id')
         self.assertEqual(value['v'], 1)
         self.assertEqual(value['sourceCommit'], COMMIT)
         self.assertEqual(value['build'], DIGEST)
@@ -501,7 +501,7 @@ class ReleaseTests(unittest.TestCase):
                                              'createdUTC', 'signingMode', 'appcastSha256',
                                              'bundleVersion', 'shortVersion', 'feedURL',
                                              'publicEDKey'})
-                self.assertEqual(value['signingMode'], 'ad-hoc')
+                self.assertEqual(value['signingMode'], 'developer-id')
                 self.assertEqual(value['appcastSha256'],
                                  hashlib.sha256(feed.read_bytes()).hexdigest())
                 self.assertEqual((value['bundleVersion'], value['shortVersion']), ('3', '1.2.3'))
