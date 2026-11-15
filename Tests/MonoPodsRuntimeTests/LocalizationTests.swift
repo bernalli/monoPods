@@ -27,8 +27,14 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
 @MainActor @Test func theAboutWindowStaysEnglishWhenTheMenuIsItalian() throws {
   let italian = try #require(
     Bundle(path: repositoryRoot.appendingPathComponent("Resources/Localization/it.lproj").path))
-  // The same lookups as `MenuTitle.about` and `AppInformation.versionLabel`.
-  #expect(Localized.format("About %@", "MonoPods", bundle: italian) == "Informazioni su MonoPods")
+  Localized.$bundleOverride.withValue(italian) {
+    checkAboutWithItalianLocalization(italian)
+  }
+}
+
+@MainActor private func checkAboutWithItalianLocalization(_ italian: Bundle) {
+  #expect(Localized.text("Options") == "Opzioni")
+  #expect(MenuTitle.about == "Informazioni su MonoPods")
   #expect(
     Localized.format("Version %@ (%@)", "1.1.0", "14", bundle: italian) == "Versione 1.1.0 (14)")
   // No table has the texts of the About window, so not even a lookup could translate them.
@@ -42,6 +48,7 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath).deletingLastPathCom
     "CFBundleShortVersionString": "1.1.0", "CFBundleVersion": "14",
     "NSHumanReadableCopyright": "Copyright © 2026 Example",
   ])
+  #expect(information.versionLabel == "Versione 1.1.0 (14)")
   #expect(information.englishVersionLabel == "Version 1.1.0 (14)")
   #expect(information.copyright == "Copyright © 2026 Example")
   let controller = AboutWindowController(
