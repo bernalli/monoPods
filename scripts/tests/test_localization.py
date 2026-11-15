@@ -698,6 +698,74 @@ class LocalizationSourceTests(unittest.TestCase):
         self.assertNotEqual(cases['duplicate language'], doubled)
         self.assertNotEqual(cases['duplicate key'], doubled)
 
+    def test_l14_shared_fixture_rejects_generated_mutations(self):
+        def encode(value):
+            return json.dumps(value, ensure_ascii=False).encode('utf-8')
+
+        def at(value, path):
+            for key in path:
+                value = value[key]
+            return value
+
+        def objects(value, path=()):
+            yield path
+            for key, child in value.items():
+                if isinstance(child, dict):
+                    yield from objects(child, path + (key,))
+
+        def render(value, duplicate=None, path=()):
+            if not isinstance(value, dict):
+                return json.dumps(value, ensure_ascii=False)
+            pairs = list(value.items())
+            if path == duplicate:
+                pairs.append(pairs[0])
+            return '{' + ','.join(
+                json.dumps(key) + ':' + render(child, duplicate, path + (key,))
+                for key, child in pairs) + '}'
+
+        def reversed_objects(value):
+            if not isinstance(value, dict):
+                return value
+            return {key: reversed_objects(child)
+                    for key, child in reversed(list(value.items()))}
+
+        for count in (1, 3):
+            document = {
+                name: {
+                    language: {
+                        f'K{i}é': f'K{i}é' if language == ENGLISH else f'V{i} {language}'
+                        for i in range(count)}
+                    for language in LANGUAGES}
+                for name in FIXTURE_TABLES}
+            data = render(document).encode('utf-8')
+            self.assertEqual(load_shared_fixture(data), document)
+            self.assertEqual(load_shared_fixture(encode(reversed_objects(document))), document)
+            for end in range(len(data)):
+                with self.subTest(count=count, truncation=end):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(data[:end])
+            for path in objects(document):
+                with self.subTest(count=count, duplicate=path):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(render(document, path).encode('utf-8'))
+                changed = json.loads(data)
+                at(changed, path)['unexpected'] = 'extra'
+                with self.subTest(count=count, extra=path):
+                    with self.assertRaises(StringsError):
+                        load_shared_fixture(encode(changed))
+                for key in at(document, path):
+                    changed = json.loads(data)
+                    del at(changed, path)[key]
+                    with self.subTest(count=count, missing=path + (key,)):
+                        with self.assertRaises(StringsError):
+                            load_shared_fixture(encode(changed))
+                    for bad in (None, False, 0, 1.5, [], {}, ''):
+                        changed = json.loads(data)
+                        at(changed, path)[key] = bad
+                        with self.subTest(count=count, field=path + (key,), value=bad):
+                            with self.assertRaises(StringsError):
+                                load_shared_fixture(encode(changed))
+
     def test_l14_shared_texts_match_the_other_app(self):
         fixture = load_shared_fixture(SHARED_FIXTURE.read_bytes())
         for name, languages in fixture.items():
