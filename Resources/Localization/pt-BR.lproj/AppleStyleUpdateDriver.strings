@@ -1,0 +1,13 @@
+"%1$@ %2$@ is available (you have %3$@)." = "O %1$@ %2$@ está disponível (você tem a versão %3$@).";
+"%@ is ready to install." = "O %@ está pronto para ser instalado.";
+"%@ is up to date." = "O %@ está atualizado.";
+"Cancel" = "Cancelar";
+"Checking for Updates…" = "Buscando Atualizações…";
+"Downloading Update…" = "Baixando Atualização…";
+"Install and Relaunch" = "Instalar e Reabrir";
+"Installing Update…" = "Instalando Atualização…";
+"Later" = "Mais Tarde";
+"More Info…" = "Mais Informações…";
+"OK" = "OK";
+"Preparing Update…" = "Preparando Atualização…";
+"The update could not be completed." = "Não foi possível concluir a atualização.";

@@ -30,104 +30,127 @@ public struct MenuPresentation: Equatable, Sendable {
       NoticePresenter.message(.recoveryBlocked), NoticePresenter.message(.persistenceFailed),
     ].contains(status)
     if blocked && !blockAlreadyReported {
-      warnings.append("Automatic switching is blocked; recovery evidence needs review.")
+      warnings.append(
+        Localized.text("Automatic switching is blocked; recovery evidence needs review."))
     }
-    if notice { warnings.append(status) }
+    if notice { warnings.append(Localized.text(status)) }
     if failed && status != NoticePresenter.message(.commandFailed) {
-      warnings.append("The last audio change failed. See Details for the command result.")
+      warnings.append(
+        Localized.text("The last audio change failed. See Details for the command result."))
     }
     if detectionOff && status != NoticePresenter.message(.detectionDisabled) {
-      warnings.append("Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods.")
+      warnings.append(
+        Localized.text("Turn on Automatic Ear Detection in Bluetooth Settings to use MonoPods."))
     }
     if withoutEarDetection {
-      warnings.append("AirPods Max have no ear detection, so MonoPods cannot switch.")
+      warnings.append(
+        Localized.text("AirPods Max have no ear detection, so MonoPods cannot switch."))
     }
     if unavailable {
-      warnings.append("Waiting for a reliable ear detection connection.")
+      warnings.append(Localized.text("Waiting for a reliable ear detection connection."))
     }
     if !loginCaption.isEmpty && loginCaption != LoginText.nextLogin {
-      warnings.append(loginCaption)
+      warnings.append(Localized.text(loginCaption))
     }
     if snapshot?.audio?.systemMono == .on {
-      warnings.append("System Mono Audio is on; automatic switching is paused.")
+      warnings.append(Localized.text("System Mono Audio is on; automatic switching is paused."))
     }
     self.warnings = warnings
 
     if blocked {
-      summary = "Automation Blocked"
+      summary = Localized.text("Automation Blocked")
       symbol = "exclamationmark.triangle"
     } else if failed {
-      summary = "Audio Change Failed"
+      summary = Localized.text("Audio Change Failed")
       symbol = "exclamationmark.triangle"
     } else if notice {
-      summary = "Needs Attention"
+      summary = Localized.text("Needs Attention")
       symbol = "exclamationmark.triangle"
     } else if detectionOff {
-      summary = "Automatic Ear Detection Off"
+      summary = Localized.text("Automatic Ear Detection Off")
       symbol = "ear.badge.waveform"
     } else if unavailable {
-      summary = "Ear Detection Unavailable"
+      summary = Localized.text("Ear Detection Unavailable")
       symbol = "exclamationmark.triangle"
     } else if withoutEarDetection {
       // Only AirPods Max lack ear detection. This outranks startup and the ear count: with this
       // output neither can lead to a switch.
-      summary = "AirPods Max Not Supported"
+      summary = Localized.text("AirPods Max Not Supported")
       symbol = "airpodsmax"
     } else if snapshot == nil || snapshot?.operational == false {
-      summary = status == "Waiting for the command owner" ? "Waiting for MonoPods…" : "Starting…"
+      summary =
+        status == "Waiting for the command owner"
+        ? Localized.text("Waiting for MonoPods…") : Localized.text("Starting…")
       symbol = "hourglass"
     } else if !outputPresent {
-      summary = "No AirPods Audio Output"
+      summary = Localized.text("No AirPods Audio Output")
       symbol = "airpodspro"
     } else if snapshot?.detection == .unknown || snapshot?.count == nil {
-      summary = "Waiting for Ear Detection"
+      summary = Localized.text("Waiting for Ear Detection")
       symbol = "ear.badge.waveform"
     } else {
       switch snapshot?.count {
-      case 0: summary = "No AirPods in Ear"
-      case 1: summary = "One AirPod in Use"
-      case 2: summary = "Two AirPods in Use"
-      default: summary = "Waiting for Ear Detection"
+      case 0: summary = Localized.text("No AirPods in Ear")
+      case 1: summary = Localized.text("One AirPod in Use")
+      case 2: summary = Localized.text("Two AirPods in Use")
+      default: summary = Localized.text("Waiting for Ear Detection")
       }
       symbol = "airpodspro"
     }
+    // Whole-sentence keys: a fixed value must agree with the noun of its label in each language.
     let detection: String
     switch snapshot?.detection {
-    case .on: detection = "On"
-    case .off: detection = "Off"
-    default: detection = "Unknown"
+    case .on: detection = Localized.text("Automatic Ear Detection: On")
+    case .off: detection = Localized.text("Automatic Ear Detection: Off")
+    default: detection = Localized.text("Automatic Ear Detection: Unknown")
     }
     let command: String
     if let receipt = snapshot?.lastCompleted {
-      command = "\(receipt.target == .mono ? "Mono" : "Stereo") (Exit \(receipt.exitCode))"
+      command = Localized.format(
+        "%@ (Exit %@)", receipt.target == .mono ? Localized.text("Mono") : Localized.text("Stereo"),
+        String(receipt.exitCode))
     } else {
-      command = "None Yet"
+      command = Localized.text("None Yet")
     }
     let count: String
     if let value = snapshot?.count {
       count = String(value)
     } else {
-      count = "Unknown"
+      count = Localized.text("Unknown")
     }
     let systemMono: String
     switch snapshot?.audio?.systemMono {
-    case .on: systemMono = "On"
-    case .off: systemMono = "Off"
-    default: systemMono = "Unavailable (treated as off)"
+    case .on: systemMono = Localized.text("On")
+    case .off: systemMono = Localized.text("Off")
+    default: systemMono = Localized.text("Unavailable (treated as off)")
     }
     let currentAudio =
       snapshot?.audio.map {
-        "Current Audio: \($0.mode == .mono ? "Mono" : $0.mode == .stereo ? "Stereo" : "Unknown") (OSStatus \($0.status))"
-      } ?? "Current Audio: Unknown"
+        let mode =
+          $0.mode == .mono
+          ? Localized.text("Mono")
+          : $0.mode == .stereo ? Localized.text("Stereo") : Localized.text("Unknown")
+        return Localized.format("Current Audio: %@ (OSStatus %@)", mode, String($0.status))
+      } ?? Localized.format("Current Audio: %@", Localized.text("Unknown"))
+    let output: String
+    if routeName.isEmpty {
+      output = Localized.text("Audio Output: None")
+    } else if routeName == "No Bluetooth output" {
+      output = Localized.format("Audio Output: %@", Localized.text(routeName))
+    } else {
+      output = Localized.format("Audio Output: %@", routeName)
+    }
     details = [
-      "Accessibility Mono Audio: \(systemMono)",
+      Localized.format("Accessibility Mono Audio: %@", systemMono),
       currentAudio,
-      "Audio Output: \(routeName.isEmpty ? "None" : routeName)",
-      "Model: \(outputPresent ? model?.name ?? "Not Recognized" : "None")",
-      "AirPods in Use: \(count)",
-      "Automatic Ear Detection: \(detection)",
-      "Last Command: \(command)",
-      "Status: \(status)",
+      output,
+      outputPresent
+        ? Localized.format("Model: %@", model?.name ?? Localized.text("Not Recognized"))
+        : Localized.text("Model: None"),
+      Localized.format("AirPods in Use: %@", count),
+      detection,
+      Localized.format("Last Command: %@", command),
+      Localized.format("Status: %@", Localized.text(status)),
     ]
   }
 }

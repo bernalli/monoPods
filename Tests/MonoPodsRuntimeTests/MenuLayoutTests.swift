@@ -26,7 +26,7 @@ private func layoutState(
       snapshot: snapshot, routeName: route, routeModel: AirPodsModel.model(productID: 0x2014),
       status: status, loginCaption: login),
     launchAtLogin: launchAtLogin, loginCaption: login,
-    menuVisible: menuVisible, versionLabel: "Version 1.0.1 (11)", updates: updates,
+    menuVisible: menuVisible, versionLabel: "Version 1.0.1", updates: updates,
     waitingForUpdate: waiting)
 }
 
@@ -77,7 +77,7 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   let summary = try #require(rows.first { $0.title == state.presentation.summary })
   #expect(summary.kind == .info)
   #expect(summary.symbol == state.presentation.symbol)
-  #expect(rows.contains { $0.title == "Version 1.0.1 (11)" && $0.kind == .info })
+  #expect(rows.contains { $0.title == "Version 1.0.1" && $0.kind == .info })
   let details = try #require(submenu(rows, titled: "Details"))
   #expect(!details.isEmpty)
   #expect(details.allSatisfy { $0.kind == .info })
@@ -153,6 +153,32 @@ private func index(of command: MenuCommand, in rows: [MenuRow]) -> Int? {
   let waiting = MenuLayout.rows(for: layoutState(waiting: true))
   let resume = try #require(index(of: .resume, in: waiting))
   #expect(waiting[resume].title == UpdateText.resume)
+}
+
+@Test func automaticUpdatesIsASwitchBetweenTheLoginCaptionAndTheSeparator() throws {
+  for automaticChecks in [false, true] {
+    let updates = UpdateMenuState(
+      available: true, canCheck: true, automaticChecks: automaticChecks)
+    let options = try #require(
+      submenu(MenuLayout.rows(for: layoutState(updates: updates)), titled: "Options"))
+    let row = try #require(options.firstIndex { $0.id == "automatic" })
+    #expect(
+      options[row]
+        == MenuRow(
+          id: "automatic", title: "Automatic Updates", symbol: "arrow.triangle.2.circlepath",
+          kind: .toggle(.automaticUpdates, isOn: automaticChecks)))
+    #expect(options[row - 1].id.hasPrefix("login.caption."))
+    #expect(options[row + 1].id == "options.separator")
+  }
+}
+
+@Test func automaticUpdatesIsMissingWithoutTheUpdater() throws {
+  let rows = MenuLayout.rows(
+    for: layoutState(updates: UpdateMenuState(available: false, canCheck: false)))
+  let options = try #require(submenu(rows, titled: "Options"))
+  #expect(!options.contains { $0.id == "automatic" })
+  #expect(index(of: .automaticUpdates, in: options) == nil)
+  #expect(MenuCommand.automaticUpdates.link == nil)
 }
 
 @Test func rowIdentitiesAreUniqueAtEveryLevel() {

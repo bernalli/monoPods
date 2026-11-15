@@ -2,12 +2,12 @@ import Testing
 
 @testable import MonoPodsRuntime
 
-@Test func versionAndBuildComeFromBundleMetadata() {
+@Test func versionComesFromBundleMetadataWithoutTheBuild() {
   let info = AppInformation(infoDictionary: [
     "CFBundleName": "MonoPods", "CFBundleShortVersionString": "2.3.4",
     "CFBundleVersion": "56", "NSHumanReadableCopyright": "Copyright example",
   ])
-  #expect(info.versionLabel == "Version 2.3.4 (56)")
+  #expect(info.versionLabel == "Version 2.3.4")
   #expect(info.name == "MonoPods")
   #expect(info.copyright == "Copyright example")
 }
@@ -16,7 +16,6 @@ import Testing
   let info = AppInformation(infoDictionary: nil)
   #expect(info.name == "MonoPods")
   #expect(info.version == nil)
-  #expect(info.build == nil)
   #expect(info.versionLabel == "Version Unavailable")
   #expect(info.copyright == nil)
 }
@@ -27,7 +26,7 @@ import Testing
     "NSHumanReadableCopyright": 42,
   ])
   #expect(info.name == "MonoPods")
-  #expect(info.versionLabel == "Version Unavailable (Build 7)")
+  #expect(info.versionLabel == "Version Unavailable")
   #expect(info.copyright == nil)
   #expect(
     AppInformation(infoDictionary: ["CFBundleShortVersionString": "1.2"]).versionLabel

@@ -82,32 +82,47 @@ class UpdateWiringTests(unittest.TestCase):
                     self.assertNotIn('checkForUpdatesInBackground', text)
 
     def test_raw_preferences_and_sparkle_setters_are_switched_off_before_sync(self):
-        names = ('automaticallyDownloadsUpdates =', 'automaticallyChecksForUpdates =')
+        downloads = 'automaticallyDownloadsUpdates ='
+        checks = 'automaticallyChecksForUpdates ='
         for path in swift_sources():
             text = path.read_text()
-            for name in names:
+            for name in (downloads, checks):
                 with self.subTest(path=path.relative_to(ROOT), name=name):
                     if path.name != 'UpdateController.swift':
                         self.assertNotIn(name, text)
                         continue
                     self.assertEqual(text.count(name), 1)
-                    self.assertEqual(text.count(name + ' false'), 1)
             if path.name == 'UpdateController.swift':
-                body = text[text.index('func switchOffAutomatic(') :]
+                self.assertEqual(text.count(downloads + ' false'), 1)
+                self.assertEqual(text.count(checks + ' enabled'), 1)
+                self.assertNotIn('CFPreferencesSetAppValue(checksKey', text)
+                body = text[text.index('func switchOffAutomaticDownloads(') :]
                 body = body[: body.index('\n  }\n')]
-                for key in ('downloadsKey', 'checksKey'):
-                    self.assertIn(f'CFPreferencesSetAppValue({key}, kCFBooleanFalse, domain)', body)
-                positions = [
-                    body.index('CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)'),
-                    body.index('CFPreferencesSetAppValue(checksKey, kCFBooleanFalse, domain)'),
-                    *(body.index(name + ' false') for name in names),
-                ]
-                self.assertEqual(positions, sorted(positions))
+                raw = 'CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)'
+                self.assertIn(raw, body)
+                self.assertIn(downloads + ' false', body)
+                self.assertLess(body.index(raw), body.index(downloads + ' false'))
+                setter = text[text.index('func setAutomaticChecks(') :]
+                self.assertIn(checks + ' enabled', setter[: setter.index('\n  }\n')])
                 sync = text[text.index('func synchronizeAutomaticPreferences(') :]
                 self.assertIn('return CFPreferencesAppSynchronize(domain)', sync)
                 self.assertIn('CFPreferencesCopyValue(', text)
                 self.assertIn('kCFPreferencesCurrentUser, kCFPreferencesAnyHost', text)
                 self.assertIn('SparklePort(updater: updater, preferencesDomain: bundle.bundleIdentifier)', text)
+
+    def test_the_update_driver_is_the_apple_style_driver(self):
+        text = (ROOT / 'Sources/MonoPods/UpdateController.swift').read_text()
+        self.assertNotIn('SPUStandardUserDriver', text)
+        self.assertEqual(text.count('AppleStyleUpdateDriver(hostBundle:'), 1)
+        body = text[text.index('func showUpdateFound(') :]
+        body = body[: body.index('\n  }\n')]
+        self.assertLess(body.index('controller.authorizeInstall('),
+                        body.index('reply(authorized ? .install : .dismiss)'))
+
+    def test_the_update_driver_imports_only_appkit_foundation_and_sparkle(self):
+        text = (ROOT / 'Sources/MonoPods/AppleStyleUpdateDriver.swift').read_text()
+        imports = re.findall(r'^\s*(?:@\w+\s+)*import\s+(.+?)\s*$', text, re.M)
+        self.assertEqual(sorted(set(imports)), ['AppKit', 'Foundation', 'Sparkle'])
 
 
 class UpdateContractTests(unittest.TestCase):
@@ -142,6 +157,65 @@ class UpdateChannelTests(unittest.TestCase):
         rules = runpy.run_path(str(ROOT / 'scripts/bundle-info.py'))
         feed, _ = rules['read_channel'](ROOT / 'Resources/UpdateChannel.json')
         self.assertEqual(feed, rules['PRODUCTION_FEED_URL'])
+
+
+class SponsorButtonTests(unittest.TestCase):
+    STYLE = ROOT / 'Sources/MonoPodsRuntime/CoffeeButtonStyle.swift'
+    ABOUT = ROOT / 'Sources/MonoPodsRuntime/AboutWindow.swift'
+
+    def test_the_coffee_style_is_self_contained(self):
+        # Another app copies the file byte for byte: no type or text of MonoPods inside.
+        text = self.STYLE.read_text()
+        self.assertEqual(re.findall(r'^import (\S+)$', text, re.M), ['AppKit', 'SwiftUI'])
+        self.assertIn('struct CoffeeButtonStyle: ButtonStyle {', text)
+        for word in ('Localized', 'MonoPods', 'AboutText'):
+            with self.subTest(word=word):
+                self.assertNotIn(word, text)
+
+    def test_the_sponsor_button_uses_the_capsule_style(self):
+        text = self.ABOUT.read_text()
+        start = text.index('Button(action: openSponsors)')
+        button = text[start:text.index('.padding(.top, 14)', start)]
+        self.assertIn('Label(AboutText.sponsor, systemImage: "cup.and.saucer.fill")', button)
+        self.assertIn('.buttonStyle(CoffeeButtonStyle())', button)
+        self.assertIn('.focusEffectDisabled()', button)
+        self.assertNotIn('.controlSize(', button)
+
+
+class ArtworkTests(unittest.TestCase):
+    """The README cover and the GitHub social preview: design D, rendered by make-artwork.swift."""
+    IMAGES = ROOT / 'docs/images'
+    GENERATOR = ROOT / 'scripts/make-artwork.swift'
+    # GitHub refuses a social preview of 1 MB or more.
+    SOCIAL_LIMIT = 1_000_000
+    TEXTS = ('"MonoPods"', '"Mono with one AirPod."', '"Stereo with two."',
+             '"A small menu bar app that changes your Mac\'s audio for you, as soon as you put an '
+             'AirPod in or take it out."')
+
+    @staticmethod
+    def size(path):
+        data = path.read_bytes()
+        assert data[:8] == b'\x89PNG\r\n\x1a\n' and data[12:16] == b'IHDR', path
+        return int.from_bytes(data[16:20], 'big'), int.from_bytes(data[20:24], 'big')
+
+    def test_cover_and_social_preview_have_the_design_sizes(self):
+        self.assertEqual(self.size(self.IMAGES / 'banner.png'), (2560, 1280))
+        self.assertEqual(self.size(self.IMAGES / 'social-preview.png'), (1280, 640))
+        self.assertLess((self.IMAGES / 'social-preview.png').stat().st_size, self.SOCIAL_LIMIT)
+        self.assertEqual(sorted(path.name for path in self.IMAGES.iterdir()),
+                         ['banner.png', 'social-preview.png'])
+
+    def test_the_generator_draws_the_design_texts_once(self):
+        source = self.GENERATOR.read_text()
+        for text in self.TEXTS:
+            with self.subTest(text=text):
+                self.assertEqual(source.count(text), 1)
+        for value in ('0xFBF3E8', '0x0E2A3D', 'icon_512x512@2x.png', 'PlusJakartaSans-SemiBold'):
+            with self.subTest(value=value):
+                self.assertIn(value, source)
+        for removed in ('howItWorks', 'how-it-works'):
+            with self.subTest(removed=removed):
+                self.assertNotIn(removed, source)
 
 
 if __name__ == '__main__':

@@ -48,4 +48,4 @@ A production release publishes `dist/MonoPods.dmg` and `dist/appcast.xml` as ass
 
 ## Checking an update
 
-MonoPods checks for updates only when the user asks. To verify a release, install the previous release, choose Check for Updates… in its menu and install the offered update.
+MonoPods checks for updates when the user asks or, with Automatic Updates on, about once a day. To verify a release, install the previous release, choose Check for Updates… in its menu and install the offered update.

@@ -18,8 +18,9 @@ NETWORK_LINE = ('- Apart from update checks and downloads, MonoPods makes no net
                 'It reads the local system log.')
 README_TITLES = ['Install', 'Updates', 'Requirements', 'Good to know', 'License']
 README_UPDATES = [
-    'Choose Check for Updates… to check for a new version. MonoPods never checks automatically '
-    'and downloads an update only when you choose to install it.',
+    'Choose Check for Updates… to check for a new version. At first launch MonoPods asks whether '
+    'to check automatically, about once a day; you can change this with Automatic Updates in '
+    'Options. MonoPods downloads an update only when you choose Install and Relaunch.',
     '- Before downloading, MonoPods must return the sound to stereo or confirm that there is '
     'nothing to restore. From that confirmation until the new version runs, automatic switching '
     'is paused.',
@@ -29,10 +30,11 @@ README_UPDATES = [
     'installation, other launches of MonoPods stay inactive until the new version is complete '
     'and verified.',
 ]
-AUTOMATIC_MODE_PHRASES = ('Automatic Updates', 'retries at the next launch', 'Enable Automatic Updates', 'Not Now',
-                          'asks once', 'about once a day', 'by itself, ',
+AUTOMATIC_MODE_PHRASES = ('retries at the next launch', 'Enable Automatic Updates', 'Not Now',
+                          'by itself, ',
                           'downloads and installs new versions by itself', 'this takes seconds')
-RELEASE_CHECK = ('MonoPods checks for updates only when the user asks. '
+RELEASE_CHECK = ('MonoPods checks for updates when the user asks or, with Automatic Updates on, '
+                 'about once a day. '
                  'To verify a release, install the previous release, choose Check for Updates… '
                  'in its menu and install the offered update.')
 TECHNICAL_UPDATES = [
@@ -45,10 +47,12 @@ TECHNICAL_UPDATES = [
     'active, including the download.',
     'If the update cannot start in time, the app keeps working, and the user can check again '
     'after the next launch.',
-    'Sparkle checks for updates only when the user chooses Check for Updates… in the menu.',
-    'At every launch, the app turns off Sparkle\'s automatic checks and automatic downloads.',
-    'If either is turned on later, the app turns both off again.',
-    'The app refuses every scheduled check.',
+    'Sparkle checks for updates when the user chooses Check for Updates… and, if Automatic '
+    'Updates is on, about once a day.',
+    'At every launch, the app turns off Sparkle\'s automatic downloads.',
+    'If automatic downloads are turned on later, the app turns them off again.',
+    'The app allows a scheduled check only while Automatic Updates is on; every update installs '
+    'only after the user chooses Install and Relaunch.',
     'After a crash, the next owner performs journal recovery before resuming operation or '
     'updates.',
     'During replacement, an old version restarted by the launch agent remains inactive.',
@@ -150,7 +154,7 @@ class ReadmeTests(unittest.TestCase):
 
     def test_updates_name_the_command_the_app_shows(self):
         source = (ROOT / 'Sources/MonoPodsRuntime/UpdatePolicy.swift').read_text()
-        found = re.findall(r'static let check = "([^"]+)"', source)
+        found = re.findall(r'static var check: String \{ Localized\.text\("([^"]+)"\) \}', source)
         self.assertEqual(len(found), 1)
         command = found[0].replace('\\u{2026}', '…')
         self.assertIn(command, joined(section(self.lines, 'Updates')))

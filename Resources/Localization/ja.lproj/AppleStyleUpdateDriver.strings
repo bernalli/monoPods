@@ -1,0 +1,13 @@
+"%1$@ %2$@ is available (you have %3$@)." = "%1$@ %2$@が利用可能です（現在のバージョンは%3$@）。";
+"%@ is ready to install." = "%@をインストールする準備ができました。";
+"%@ is up to date." = "%@は最新です。";
+"Cancel" = "キャンセル";
+"Checking for Updates…" = "アップデートを確認中…";
+"Downloading Update…" = "アップデートをダウンロード中…";
+"Install and Relaunch" = "インストールして再起動";
+"Installing Update…" = "アップデートをインストール中…";
+"Later" = "あとで";
+"More Info…" = "詳しい情報…";
+"OK" = "OK";
+"Preparing Update…" = "アップデートを準備中…";
+"The update could not be completed." = "アップデートを完了できませんでした。";

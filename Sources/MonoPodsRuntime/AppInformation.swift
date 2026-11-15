@@ -4,7 +4,6 @@ import Foundation
 public struct AppInformation: Equatable, Sendable {
   public let name: String
   public let version: String?
-  public let build: String?
   public let copyright: String?
 
   public init(infoDictionary: [String: Any]?) {
@@ -15,16 +14,18 @@ public struct AppInformation: Equatable, Sendable {
     }
     name = text("CFBundleName") ?? "MonoPods"
     version = text("CFBundleShortVersionString")
-    build = text("CFBundleVersion")
     copyright = text("NSHumanReadableCopyright")
   }
 
+  /// The version line of the menu. The build number is never shown.
   public var versionLabel: String {
-    switch (version, build) {
-    case (.some(let version), .some(let build)): return "Version \(version) (\(build))"
-    case (.some(let version), .none): return "Version \(version)"
-    case (.none, .some(let build)): return "Version Unavailable (Build \(build))"
-    case (.none, .none): return "Version Unavailable"
-    }
+    guard let version else { return Localized.text("Version Unavailable") }
+    return Localized.format("Version %@", version)
+  }
+
+  /// The version line of the About window, in English in every language.
+  public var englishVersionLabel: String {
+    guard let version else { return "Version Unavailable" }
+    return "Version \(version)"
   }
 }

@@ -70,7 +70,7 @@ private var validInfo: [String: Any] { ["SUFeedURL": feed, "SUPublicEDKey": key]
   #expect(!UpdateText.check.contains("..."))
 }
 
-// MARK: - Manual checks only, with a fake updater
+// MARK: - Automatic downloads off, automatic checks by choice, with a fake updater
 
 /// Sparkle's user defaults keys, as an older build of the app left them.
 private let checksKey = "SUEnableAutomaticChecks"
@@ -79,7 +79,8 @@ private let oldConsentKey = "MonoPodsUpdateConsentAnswered"
 
 /// Models Sparkle 2.10.1 with no SUAllowsAutomaticUpdates: its download getter is
 /// filtered and its download setter does nothing when checks are off. Raw writes
-/// and persistence can fail independently of the effective getters.
+/// and persistence can fail independently of the effective getters. The question flag is
+/// already written, as on every launch after the first, unless a test clears it.
 @MainActor private final class FakePort: UpdaterPort {
   var values: [String: Any] = [:]
   var events: [String] = []
@@ -90,9 +91,10 @@ private let oldConsentKey = "MonoPodsUpdateConsentAnswered"
   var downloadsGetterOverride: Bool?
   var lostWrites: Set<String> = []
   var onWrite: (() -> Void)?
+  var questionAsked = true
+  var replies: [@MainActor (AutomaticUpdateAnswer) -> Void] = []
   var starts = 0
   var checks = 0
-  var rawAutomaticChecks: Any? { values[checksKey] }
   var rawAutomaticDownloads: Any? { values[downloadsKey] }
   var automaticChecks: Bool {
     checksGetterOverride ?? ((values[checksKey] as? Bool) ?? false)
@@ -100,19 +102,22 @@ private let oldConsentKey = "MonoPodsUpdateConsentAnswered"
   var automaticDownloads: Bool {
     downloadsGetterOverride ?? (automaticChecks && ((values[downloadsKey] as? Bool) ?? false))
   }
-  func switchOffAutomatic() {
-    for key in [downloadsKey, checksKey] {
-      events.append("raw \(key)=false")
-      if !lostWrites.contains(key) { values[key] = false }
-      onWrite?()
-    }
-    for key in [downloadsKey, checksKey] {
-      events.append("setter \(key)=false")
-      if (key != downloadsKey || automaticChecks) && !lostWrites.contains(key) {
-        values[key] = false
-      }
-      onWrite?()
-    }
+  var automaticUpdateQuestionAsked: Bool { questionAsked }
+  func switchOffAutomaticDownloads() {
+    events.append("raw \(downloadsKey)=false")
+    if !lostWrites.contains(downloadsKey) { values[downloadsKey] = false }
+    onWrite?()
+    events.append("setter \(downloadsKey)=false")
+    if automaticChecks && !lostWrites.contains(downloadsKey) { values[downloadsKey] = false }
+    onWrite?()
+  }
+  func setAutomaticChecks(_ enabled: Bool) {
+    events.append("checks=\(enabled)")
+    if !lostWrites.contains(checksKey) { values[checksKey] = enabled }
+  }
+  func markAutomaticUpdateQuestionAsked() {
+    events.append("asked")
+    questionAsked = true
   }
   func synchronizeAutomaticPreferences() -> Bool {
     events.append("sync")
@@ -129,25 +134,41 @@ private let oldConsentKey = "MonoPodsUpdateConsentAnswered"
   }
 }
 
+/// A reference that a main-actor closure can change.
+@MainActor private final class Box<Value> {
+  var value: Value
+  init(_ value: Value) { self.value = value }
+}
+
+/// Starts a coordinator whose question records itself and keeps the reply for the test.
 @MainActor private func started(_ port: FakePort) -> UpdateCoordinator {
   let coordinator = UpdateCoordinator(port: port)
+  coordinator.ask = { [port] reply in
+    port.events.append("ask")
+    port.replies.append(reply)
+  }
   coordinator.start()
   return coordinator
 }
 
 private let switchOff = [
-  "raw SUAutomaticallyUpdate=false", "raw SUEnableAutomaticChecks=false",
-  "setter SUAutomaticallyUpdate=false", "setter SUEnableAutomaticChecks=false", "sync",
+  "raw SUAutomaticallyUpdate=false", "setter SUAutomaticallyUpdate=false", "sync",
 ]
+/// First launch: downloads off, checks off, the flag written, the updater started, the question.
+private let firstLaunch = switchOff + ["checks=false", "asked", "start", "ask"]
 
-@MainActor @Test func firstLaunchAsksNothingSwitchesBothSettingsOffAndStartsTheUpdater() {
+@MainActor @Test func firstLaunchSwitchesDownloadsOffAsksOnceAndStartsTheUpdater() {
   let port = FakePort()
+  port.questionAsked = false
   let subject = started(port)
-  #expect(port.events == switchOff + ["start"])
+  #expect(port.events == firstLaunch)
   #expect(!port.events.contains { $0.hasSuffix("=true") })
-  #expect(port.starts == 1 && port.checks == 0)
+  #expect(port.starts == 1 && port.checks == 0 && port.replies.count == 1)
+  #expect(port.questionAsked)
   #expect(!port.automaticChecks && !port.automaticDownloads)
   #expect(subject.state.available && subject.state.canCheck && subject.state.checkEnabled)
+  #expect(!subject.state.automaticChecks)
+  #expect(!subject.mayPerformCheck(userInitiated: false))
 }
 
 @MainActor @Test func startingTwiceStartsTheUpdaterOnce() {
@@ -157,15 +178,21 @@ private let switchOff = [
   #expect(port.starts == 1)
 }
 
-@MainActor @Test func settingsLeftOnByAnOlderBuildAreSwitchedOffBeforeTheStart() {
+@MainActor @Test func settingsLeftOnByAnOlderBuildAreSwitchedOffBeforeTheStart() throws {
   for (checks, downloads) in [(true, true), (true, false), (false, true)] {
     let port = FakePort()
+    port.questionAsked = false
     port.values = [oldConsentKey: true, checksKey: checks, downloadsKey: downloads]
     let subject = started(port)
-    #expect(port.events == switchOff + ["start"])
+    #expect(port.events == firstLaunch)
     #expect(!port.automaticChecks && !port.automaticDownloads)
-    #expect(subject.state.checkEnabled)
+    #expect(subject.state.checkEnabled && !subject.state.automaticChecks)
     #expect(!subject.mayPerformCheck(userInitiated: false))
+    // Checks stay off until the answer; downloads stay off after it.
+    let reply = try #require(port.replies.first)
+    reply(.enable)
+    #expect(port.automaticChecks && !port.automaticDownloads)
+    #expect(subject.mayPerformCheck(userInitiated: false))
   }
 }
 
@@ -177,10 +204,11 @@ private let switchOff = [
     port.values[checksKey] = checks
     port.values[downloadsKey] = downloads
     subject.settingsChanged()
-    #expect(port.events == switchOff)
-    #expect(!port.automaticChecks && !port.automaticDownloads)
-    #expect(subject.state.checkEnabled)
-    #expect(!subject.mayPerformCheck(userInitiated: false))
+    // Only downloads are switched off again; checks turned on from outside stay and are published.
+    #expect(port.events == (downloads ? switchOff : []))
+    #expect(port.automaticChecks == checks && !port.automaticDownloads)
+    #expect(subject.state.checkEnabled && subject.state.automaticChecks == checks)
+    #expect(subject.mayPerformCheck(userInitiated: false) == checks)
   }
 }
 
@@ -195,6 +223,7 @@ private let switchOff = [
 
 @MainActor @Test func noCheckIsAllowedWhileTheSettingsAreBeingWritten() {
   let port = FakePort()
+  port.values[checksKey] = true
   let subject = started(port)
   subject.checkForUpdates()
   var observed: [(Bool, Bool)] = []
@@ -207,25 +236,33 @@ private let switchOff = [
     observed.append(
       (subject.mayPerformCheck(userInitiated: false), subject.mayPerformCheck(userInitiated: true)))
   }
-  port.values[checksKey] = true
+  port.events.removeAll()
+  port.values[downloadsKey] = true
   subject.settingsChanged()
-  #expect(observed.count == 4)
+  #expect(port.events == switchOff)
+  #expect(observed.count == 2)
   #expect(observed.allSatisfy { !$0.0 && !$0.1 })
   #expect(port.checks == 1)
   #expect(subject.state.checkEnabled)
 }
 
-@MainActor @Test func scheduledChecksAreAlwaysRefused() {
+@MainActor @Test func scheduledChecksPassOnlyWithAutomaticChecksOnAndDownloadsOff() {
   let port = FakePort()
   let subject = started(port)
   #expect(!subject.mayPerformCheck(userInitiated: false))
+  subject.setAutomaticChecks(true)
+  #expect(subject.mayPerformCheck(userInitiated: false))
+  #expect(subject.mayPerformCheck(userInitiated: false))
+  // A scheduled check does not use up the menu command.
   subject.checkForUpdates()
-  #expect(!subject.mayPerformCheck(userInitiated: false))
-  // Even with both settings on and not yet observed, a scheduled check does not pass.
-  port.values[checksKey] = true
+  #expect(subject.mayPerformCheck(userInitiated: false))
+  #expect(subject.mayPerformCheck(userInitiated: true))
+  // Downloads switched on and not yet observed: refused until they are seen off again.
   port.values[downloadsKey] = true
   #expect(!subject.mayPerformCheck(userInitiated: false))
   subject.settingsChanged()
+  #expect(subject.mayPerformCheck(userInitiated: false))
+  subject.setAutomaticChecks(false)
   #expect(!subject.mayPerformCheck(userInitiated: false))
 }
 
@@ -259,12 +296,12 @@ private let switchOff = [
 }
 
 @MainActor @Test func aFailedWriteKeepsTheGateClosedAndTheMenuDisabled() {
-  for lost in [[checksKey], [downloadsKey], [checksKey, downloadsKey]] {
+  for checks in [true, false] {
     let port = FakePort()
-    port.values = [checksKey: true, downloadsKey: true]
-    port.lostWrites = Set(lost)
+    port.values = [checksKey: checks, downloadsKey: true]
+    port.lostWrites = [downloadsKey]
     let subject = started(port)
-    #expect(lost.contains { (port.values[$0] as? Bool) == true })
+    #expect((port.values[downloadsKey] as? Bool) == true)
     #expect(!subject.state.canCheck && !subject.state.checkEnabled)
     subject.checkForUpdates()
     #expect(port.checks == 0)
@@ -273,16 +310,18 @@ private let switchOff = [
   }
 }
 
-@MainActor @Test func theGateReopensOnlyWhenBothSettingsAreSeenOff() {
+@MainActor @Test func theGateReopensOnlyWhenDownloadsAreSeenOff() {
   let port = FakePort()
   port.values = [checksKey: true, downloadsKey: true]
-  port.lostWrites = [checksKey, downloadsKey]
+  port.lostWrites = [downloadsKey]
   let subject = started(port)
   #expect(!subject.state.checkEnabled)
+  #expect(!subject.mayPerformCheck(userInitiated: false))
   port.lostWrites = []
-  port.values = [checksKey: false, downloadsKey: false]
+  port.values = [checksKey: true, downloadsKey: false]
   subject.settingsChanged()
   #expect(subject.state.checkEnabled)
+  #expect(subject.mayPerformCheck(userInitiated: false))
   subject.checkForUpdates()
   #expect(port.checks == 1 && subject.mayPerformCheck(userInitiated: true))
 }
@@ -309,22 +348,18 @@ private let switchOff = [
 }
 
 @MainActor @Test func lyingGettersCannotOpenTheGateWhileRawPreferencesRemainOn() {
-  for key in [checksKey, downloadsKey] {
-    let port = FakePort()
-    port.values = [checksKey: false, downloadsKey: false]
-    port.values[key] = true
-    port.checksGetterOverride = false
-    port.downloadsGetterOverride = false
-    port.lostWrites = [key]
-    let subject = started(port)
-    #expect(!subject.state.checkEnabled)
-    subject.checkForUpdates()
-    #expect(port.checks == 0 && !subject.mayPerformCheck(userInitiated: true))
-    port.lostWrites = []
-    subject.settingsChanged()
-    #expect((port.values[key] as? Bool) == false)
-    #expect(subject.state.checkEnabled)
-  }
+  let port = FakePort()
+  port.values = [checksKey: false, downloadsKey: true]
+  port.downloadsGetterOverride = false
+  port.lostWrites = [downloadsKey]
+  let subject = started(port)
+  #expect(!subject.state.checkEnabled)
+  subject.checkForUpdates()
+  #expect(port.checks == 0 && !subject.mayPerformCheck(userInitiated: true))
+  port.lostWrites = []
+  subject.settingsChanged()
+  #expect((port.values[downloadsKey] as? Bool) == false)
+  #expect(subject.state.checkEnabled)
 }
 
 @MainActor @Test func failedSynchronizationCannotBeBypassedByObservingFalseValues() {
@@ -347,21 +382,18 @@ private let switchOff = [
     nil, 0, 1, NSNumber(value: 0), NSNumber(value: 1),
     0.0, "false", "0", NSNull(), [], ["value": false],
   ]
-  for key in [checksKey, downloadsKey] {
-    for value in malformed {
-      for losesWrite in [false, true] {
-        let port = FakePort()
-        port.values = [checksKey: false, downloadsKey: false]
-        port.values[key] = value
-        port.checksGetterOverride = false
-        port.downloadsGetterOverride = false
-        port.lostWrites = losesWrite ? [key] : []
-        let subject = started(port)
-        #expect(subject.state.checkEnabled == !losesWrite)
-        subject.checkForUpdates()
-        #expect(port.checks == (losesWrite ? 0 : 1))
-        #expect(subject.mayPerformCheck(userInitiated: true) == !losesWrite)
-      }
+  for value in malformed {
+    for losesWrite in [false, true] {
+      let port = FakePort()
+      port.values = [checksKey: false, downloadsKey: false]
+      port.values[downloadsKey] = value
+      port.downloadsGetterOverride = false
+      port.lostWrites = losesWrite ? [downloadsKey] : []
+      let subject = started(port)
+      #expect(subject.state.checkEnabled == !losesWrite)
+      subject.checkForUpdates()
+      #expect(port.checks == (losesWrite ? 0 : 1))
+      #expect(subject.mayPerformCheck(userInitiated: true) == !losesWrite)
     }
   }
 }
@@ -369,12 +401,14 @@ private let switchOff = [
 @MainActor @Test func trueEffectiveGetterKeepsGateClosedEvenWithFalseRawPreferences() {
   for checks in [false, true] {
     let port = FakePort()
-    port.checksGetterOverride = checks
-    port.downloadsGetterOverride = !checks
+    port.values[checksKey] = checks
+    port.downloadsGetterOverride = true
     let subject = started(port)
+    #expect((port.values[downloadsKey] as? Bool) == false)
     #expect(!subject.state.checkEnabled)
     subject.checkForUpdates()
     #expect(port.checks == 0 && !subject.mayPerformCheck(userInitiated: true))
+    #expect(!subject.mayPerformCheck(userInitiated: false))
   }
 }
 
@@ -392,4 +426,193 @@ private let switchOff = [
   #expect(!subject.state.checkEnabled)
   subject.settingsChanged()
   #expect(subject.state.checkEnabled)
+}
+
+// MARK: - The question at first launch and the switch
+
+@Test func theQuestionsButtonsGiveTheAnswer() {
+  #expect(AutomaticUpdateAnswer(buttonIndex: 0) == .enable)
+  #expect(AutomaticUpdateAnswer(buttonIndex: 1) == .decline)
+  for index: Int? in [2, -1, nil] {
+    #expect(AutomaticUpdateAnswer(buttonIndex: index) == .dismissed)
+  }
+}
+
+@MainActor @Test func theAnswerTurnsAutomaticChecksOnOnlyForEnable() throws {
+  let cases: [(AutomaticUpdateAnswer, Bool)] = [
+    (.enable, true), (.decline, false), (.dismissed, false),
+  ]
+  for (answer, on) in cases {
+    let port = FakePort()
+    port.questionAsked = false
+    let subject = started(port)
+    let published = Box(0)
+    subject.onChange = { published.value += 1 }
+    port.events.removeAll()
+    let reply = try #require(port.replies.first)
+    reply(answer)
+    #expect(port.events == ["checks=\(on)"])
+    #expect(port.automaticChecks == on && !port.automaticDownloads)
+    #expect(subject.state.automaticChecks == on && published.value == 1)
+    #expect(subject.mayPerformCheck(userInitiated: false) == on)
+  }
+}
+
+@MainActor @Test func theQuestionIsNotAskedAgainOnceTheFlagIsWritten() {
+  let port = FakePort()
+  port.questionAsked = false
+  _ = started(port)
+  #expect(port.replies.count == 1 && port.questionAsked)
+  // The next launch reads the written flag.
+  port.events.removeAll()
+  let next = started(port)
+  #expect(port.events == switchOff + ["start"])
+  #expect(port.replies.count == 1)
+  #expect(!next.state.automaticChecks)
+}
+
+@MainActor @Test func theFlagIsWrittenBeforeTheQuestion() {
+  let port = FakePort()
+  port.questionAsked = false
+  let subject = UpdateCoordinator(port: port)
+  subject.ask = { [port] _ in port.events.append("ask flag=\(port.questionAsked)") }
+  subject.start()
+  #expect(port.events == switchOff + ["checks=false", "asked", "start", "ask flag=true"])
+}
+
+@MainActor @Test func aLateOrRepeatedAnswerChangesNothing() throws {
+  let port = FakePort()
+  port.questionAsked = false
+  let subject = started(port)
+  let reply = try #require(port.replies.first)
+  reply(.enable)
+  port.events.removeAll()
+  reply(.decline)
+  reply(.dismissed)
+  reply(.enable)
+  #expect(port.events.isEmpty && port.automaticChecks && subject.state.automaticChecks)
+  // The switch used before the answer settles the question.
+  let late = FakePort()
+  late.questionAsked = false
+  let switched = started(late)
+  switched.setAutomaticChecks(false)
+  late.events.removeAll()
+  let lateReply = try #require(late.replies.first)
+  lateReply(.enable)
+  #expect(late.events.isEmpty && !late.automaticChecks && !switched.state.automaticChecks)
+}
+
+@MainActor @Test func scheduledChecksAreRefusedWhileTheQuestionIsPending() throws {
+  let port = FakePort()
+  port.questionAsked = false
+  port.values = [checksKey: true, downloadsKey: false]
+  // The write that turns checks off is lost: they stay on while the question waits.
+  port.lostWrites = [checksKey]
+  let subject = started(port)
+  #expect(port.automaticChecks && subject.state.checkEnabled)
+  #expect(!subject.mayPerformCheck(userInitiated: false))
+  subject.settingsChanged()
+  #expect(!subject.mayPerformCheck(userInitiated: false))
+  // The menu command still works while the question waits.
+  subject.checkForUpdates()
+  #expect(subject.mayPerformCheck(userInitiated: true))
+  port.lostWrites = []
+  let reply = try #require(port.replies.first)
+  reply(.enable)
+  #expect(subject.mayPerformCheck(userInitiated: false))
+}
+
+@MainActor @Test func theSwitchWritesOnlyTheChecksAndTheMenuFollows() {
+  let port = FakePort()
+  let notStarted = UpdateCoordinator(port: port)
+  notStarted.setAutomaticChecks(true)
+  #expect(port.events.isEmpty && !notStarted.state.automaticChecks)
+  let subject = started(port)
+  let published = Box(0)
+  subject.onChange = { published.value += 1 }
+  port.events.removeAll()
+  subject.setAutomaticChecks(true)
+  #expect(port.events == ["checks=true"])
+  #expect(subject.state.automaticChecks && published.value == 1)
+  subject.setAutomaticChecks(false)
+  #expect(port.events == ["checks=true", "checks=false"])
+  #expect(!subject.state.automaticChecks && published.value == 2)
+}
+
+// MARK: - Random sequences
+
+/// Deterministic generator with a fixed seed (SplitMix64).
+private struct SplitMix64 {
+  var state: UInt64
+  mutating func next() -> UInt64 {
+    state &+= 0x9E37_79B9_7F4A_7C15
+    var value = state
+    value = (value ^ (value >> 30)) &* 0xBF58_476D_1CE4_E5B9
+    value = (value ^ (value >> 27)) &* 0x94D0_49BB_1331_11EB
+    return value ^ (value >> 31)
+  }
+  mutating func below(_ bound: Int) -> Int { Int(next() % UInt64(bound)) }
+}
+
+/// Values another process can leave under the downloads key.
+@MainActor private let hostileDownloads: [Any?] = [
+  nil, 0, 1, NSNumber(value: 1), "false", NSNull(), true,
+]
+
+/// Only a property-list boolean false is evidence that downloads are off.
+private func isBooleanFalse(_ value: Any?) -> Bool {
+  guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else {
+    return false
+  }
+  return !number.boolValue
+}
+
+@MainActor @Test func randomSequencesNeverAllowACheckWithDownloadsOn() {
+  var generator = SplitMix64(state: 0x6D6F_6E6F_506F_6473)
+  let answers: [AutomaticUpdateAnswer] = [.enable, .decline, .dismissed]
+  for _ in 0..<300 {
+    let port = FakePort()
+    port.questionAsked = generator.below(2) == 0
+    port.values = [checksKey: generator.below(2) == 0, downloadsKey: generator.below(2) == 0]
+    let subject = started(port)
+    var credit = 0
+    var applied = 0
+    var resolved = port.replies.isEmpty
+    for _ in 0..<(1 + generator.below(40)) {
+      switch generator.below(11) {
+      case 0: subject.settingsChanged()
+      case 1: subject.canCheckChanged()
+      case 2:
+        let before = port.checks
+        subject.checkForUpdates()
+        if port.checks > before { credit = 1 }
+      case 3:
+        if subject.mayPerformCheck(userInitiated: true) {
+          #expect(credit == 1)  // I2
+          credit = 0
+        }
+      case 4: _ = subject.mayPerformCheck(userInitiated: false)
+      case 5:
+        subject.setAutomaticChecks(generator.below(2) == 0)
+        resolved = true
+      case 6:
+        if let reply = port.replies.first {
+          let start = port.events.count
+          reply(answers[generator.below(answers.count)])
+          applied += port.events[start...].filter { $0.hasPrefix("checks=") }.count
+          resolved = true
+        }
+      case 7: port.values[downloadsKey] = hostileDownloads[generator.below(hostileDownloads.count)]
+      case 8: port.lostWrites.formSymmetricDifference([downloadsKey])
+      case 9: port.lostWrites.formSymmetricDifference([checksKey])
+      default: port.syncSucceeds.toggle()
+      }
+      if subject.mayPerformCheck(userInitiated: false) {  // I1
+        #expect(port.automaticChecks && resolved)
+        #expect(isBooleanFalse(port.rawAutomaticDownloads) && !port.automaticDownloads)
+      }
+      #expect(applied <= 1)  // I3
+      #expect(port.replies.count <= 1)  // I4
+    }
+  }
 }

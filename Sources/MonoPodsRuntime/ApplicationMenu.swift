@@ -8,7 +8,8 @@ public enum ApplicationMenu {
   @MainActor public static func make(quit: @escaping @MainActor () -> Void) -> NSMenu {
     let applicationMenu = NSMenu(title: "MonoPods")
     applicationMenu.addItem(
-      ActionMenuItem(title: "Quit MonoPods", keyEquivalent: "q", perform: quit))
+      ActionMenuItem(
+        title: Localized.format("Quit %@", "MonoPods"), keyEquivalent: "q", perform: quit))
     let applicationItem = NSMenuItem(title: "MonoPods", action: nil, keyEquivalent: "")
     applicationItem.submenu = applicationMenu
     let mainMenu = NSMenu(title: "Main Menu")

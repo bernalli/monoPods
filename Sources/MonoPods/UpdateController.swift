@@ -4,14 +4,14 @@ import MonoPodsCore
 import MonoPodsRuntime
 import Sparkle
 
-/// The Sparkle updater of the product owner. Checks happen only on the user's command; the
-/// network gate and the installation gate are decided by `UpdateCoordinator` and
-/// `UpdateInstaller`.
+/// The Sparkle updater of the product owner. Checks happen on the user's command and, if the
+/// user turned them on, on Sparkle's schedule; the network gate and the installation gate are
+/// decided by `UpdateCoordinator` and `UpdateInstaller`.
 @MainActor final class UpdateController: NSObject, ObservableObject {
   @Published private(set) var state = UpdateMenuState(available: false, canCheck: false)
   private let host: RuntimeHost
   private var updater: SPUUpdater?
-  private var standardDriver: SPUStandardUserDriver?
+  private var updateDriver: AppleStyleUpdateDriver?
   private var gatedDriver: GatedUserDriver?
   private var coordinator: UpdateCoordinator?
   private var installer: UpdateInstaller?
@@ -22,18 +22,18 @@ import Sparkle
     self.host = host
   }
 
-  /// Creates the updater once; the coordinator switches the automatic settings off and starts it.
+  /// Creates the updater once; the coordinator switches automatic downloads off and starts it.
   func start() {
     guard updater == nil, let store = host.handoffStore, let version = host.bundleVersion else {
       return
     }
     let bundle = Bundle.main
-    let standard = SPUStandardUserDriver(hostBundle: bundle, delegate: nil)
-    let gated = GatedUserDriver(standard: standard, controller: self)
+    let driver = AppleStyleUpdateDriver(hostBundle: bundle)
+    let gated = GatedUserDriver(inner: driver, controller: self)
     let updater = SPUUpdater(
       hostBundle: bundle, applicationBundle: bundle, userDriver: gated, delegate: self)
     self.updater = updater
-    standardDriver = standard
+    updateDriver = driver
     gatedDriver = gated
     let installer = UpdateInstaller(
       sourceBuild: version, sourceManifest: host.manifestBuild, audio: host, store: store,
@@ -52,6 +52,7 @@ import Sparkle
       guard let self, let coordinator else { return }
       if state != coordinator.state { state = coordinator.state }
     }
+    coordinator.ask = { reply in AutomaticUpdateQuestion(appName: "MonoPods", reply: reply).show() }
     self.coordinator = coordinator
     observations = [
       updater.observe(\.canCheckForUpdates) { [weak self] _, _ in
@@ -99,23 +100,30 @@ import Sparkle
 
 private enum UpdateRefusal: Error { case notAllowed, preparing }
 
-/// The only object that writes Sparkle's two automatic settings, and only to off.
+/// The only object that writes Sparkle's two automatic settings: downloads only to off,
+/// checks only as the user chose.
 @MainActor private final class SparklePort: UpdaterPort {
   private weak var updater: SPUUpdater?
   private let preferencesDomain: String?
-  private let checksKey = "SUEnableAutomaticChecks" as CFString
   private let downloadsKey = "SUAutomaticallyUpdate" as CFString
+  private let questionKey = "automaticUpdateQuestionAsked" as CFString
 
   init(updater: SPUUpdater, preferencesDomain: String?) {
     self.updater = updater
     self.preferencesDomain = preferencesDomain
   }
-  /// A missing updater reads as on, so the gate stays closed.
-  var automaticChecks: Bool { updater?.automaticallyChecksForUpdates ?? true }
+  /// A missing updater reads as no scheduled checks and downloads on, so the gate stays closed.
+  var automaticChecks: Bool { updater?.automaticallyChecksForUpdates ?? false }
   var automaticDownloads: Bool { updater?.automaticallyDownloadsUpdates ?? true }
   var canCheckForUpdates: Bool { updater?.canCheckForUpdates ?? false }
-  var rawAutomaticChecks: Any? { rawPreference(checksKey) }
   var rawAutomaticDownloads: Any? { rawPreference(downloadsKey) }
+  /// Only a property-list boolean true counts as asked.
+  var automaticUpdateQuestionAsked: Bool {
+    guard let number = rawPreference(questionKey) as? NSNumber,
+      CFGetTypeID(number) == CFBooleanGetTypeID()
+    else { return false }
+    return number.boolValue
+  }
 
   /// Sparkle uses the main app's defaults domain. CopyValue avoids registered/global
   /// defaults and Info.plist fallbacks: missing or malformed values must close the gate.
@@ -125,14 +133,22 @@ private enum UpdateRefusal: Error { case notAllowed, preparing }
       key, preferencesDomain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
   }
 
-  /// Raw writes cannot be masked by Sparkle's allowsAutomaticUpdates filter.
-  func switchOffAutomatic() {
+  /// The raw write cannot be masked by Sparkle's allowsAutomaticUpdates filter.
+  func switchOffAutomaticDownloads() {
     guard let updater, let preferencesDomain else { return }
     let domain = preferencesDomain as CFString
     CFPreferencesSetAppValue(downloadsKey, kCFBooleanFalse, domain)
-    CFPreferencesSetAppValue(checksKey, kCFBooleanFalse, domain)
     updater.automaticallyDownloadsUpdates = false
-    updater.automaticallyChecksForUpdates = false
+  }
+  /// Sparkle's setter writes its own preference.
+  func setAutomaticChecks(_ enabled: Bool) {
+    updater?.automaticallyChecksForUpdates = enabled
+  }
+  func markAutomaticUpdateQuestionAsked() {
+    guard let preferencesDomain else { return }
+    let domain = preferencesDomain as CFString
+    CFPreferencesSetAppValue(questionKey, kCFBooleanTrue, domain)
+    _ = CFPreferencesAppSynchronize(domain)
   }
   func synchronizeAutomaticPreferences() -> Bool {
     guard let preferencesDomain else { return false }
@@ -147,6 +163,11 @@ private enum UpdateRefusal: Error { case notAllowed, preparing }
     } catch { return false }
   }
   func checkForUpdates() { updater?.checkForUpdates() }
+}
+
+extension UpdateController {
+  /// The Automatic Updates switch in the menu.
+  func setAutomaticChecks(_ enabled: Bool) { coordinator?.setAutomaticChecks(enabled) }
 }
 
 extension UpdateController: SPUUpdaterDelegate {
@@ -195,14 +216,14 @@ extension UpdateController: SPUUpdaterDelegate {
   }
 }
 
-/// Forwards everything to the standard driver and holds only the replies that would arm the
+/// Forwards everything to the inner driver and holds only the replies that would arm the
 /// installer, until the installation gate is armed.
 @MainActor final class GatedUserDriver: NSObject, SPUUserDriver {
-  private let standard: SPUStandardUserDriver
+  private let inner: AppleStyleUpdateDriver
   private weak var controller: UpdateController?
 
-  init(standard: SPUStandardUserDriver, controller: UpdateController) {
-    self.standard = standard
+  init(inner: AppleStyleUpdateDriver, controller: UpdateController) {
+    self.inner = inner
     self.controller = controller
   }
 
@@ -210,18 +231,18 @@ extension UpdateController: SPUUpdaterDelegate {
     _ request: SPUUpdatePermissionRequest,
     reply: @escaping (SUUpdatePermissionResponse) -> Void
   ) {
-    standard.show(request, reply: reply)
+    inner.show(request, reply: reply)
   }
 
   func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
-    standard.showUserInitiatedUpdateCheck(cancellation: cancellation)
+    inner.showUserInitiatedUpdateCheck(cancellation: cancellation)
   }
 
   func showUpdateFound(
     with appcastItem: SUAppcastItem, state: SPUUserUpdateState,
     reply: @escaping (SPUUserUpdateChoice) -> Void
   ) {
-    standard.showUpdateFound(with: appcastItem, state: state) { [weak self] choice in
+    inner.showUpdateFound(with: appcastItem, state: state) { [weak self] choice in
       guard choice == .install, state.stage != .installing, let controller = self?.controller
       else {
         reply(choice)
@@ -234,39 +255,39 @@ extension UpdateController: SPUUpdaterDelegate {
   }
 
   func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
-    standard.showUpdateReleaseNotes(with: downloadData)
+    inner.showUpdateReleaseNotes(with: downloadData)
   }
 
   func showUpdateReleaseNotesFailedToDownloadWithError(_ error: any Error) {
-    standard.showUpdateReleaseNotesFailedToDownloadWithError(error)
+    inner.showUpdateReleaseNotesFailedToDownloadWithError(error)
   }
 
   func showUpdateNotFoundWithError(_ error: any Error, acknowledgement: @escaping () -> Void) {
-    standard.showUpdateNotFoundWithError(error, acknowledgement: acknowledgement)
+    inner.showUpdateNotFoundWithError(error, acknowledgement: acknowledgement)
   }
 
   func showUpdaterError(_ error: any Error, acknowledgement: @escaping () -> Void) {
-    standard.showUpdaterError(error, acknowledgement: acknowledgement)
+    inner.showUpdaterError(error, acknowledgement: acknowledgement)
   }
 
   func showDownloadInitiated(cancellation: @escaping () -> Void) {
-    standard.showDownloadInitiated(cancellation: cancellation)
+    inner.showDownloadInitiated(cancellation: cancellation)
   }
 
   func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
-    standard.showDownloadDidReceiveExpectedContentLength(expectedContentLength)
+    inner.showDownloadDidReceiveExpectedContentLength(expectedContentLength)
   }
 
   func showDownloadDidReceiveData(ofLength length: UInt64) {
-    standard.showDownloadDidReceiveData(ofLength: length)
+    inner.showDownloadDidReceiveData(ofLength: length)
   }
 
   func showDownloadDidStartExtractingUpdate() {
-    standard.showDownloadDidStartExtractingUpdate()
+    inner.showDownloadDidStartExtractingUpdate()
   }
 
   func showExtractionReceivedProgress(_ progress: Double) {
-    standard.showExtractionReceivedProgress(progress)
+    inner.showExtractionReceivedProgress(progress)
   }
 
   /// After the gate is armed the app installs without a second click.
@@ -274,7 +295,7 @@ extension UpdateController: SPUUpdaterDelegate {
     if controller?.installsNow == true {
       reply(.install)
     } else {
-      standard.showReady(toInstallAndRelaunch: reply)
+      inner.showReady(toInstallAndRelaunch: reply)
     }
   }
 
@@ -282,20 +303,20 @@ extension UpdateController: SPUUpdaterDelegate {
     withApplicationTerminated applicationTerminated: Bool,
     retryTerminatingApplication: @escaping () -> Void
   ) {
-    standard.showInstallingUpdate(
+    inner.showInstallingUpdate(
       withApplicationTerminated: applicationTerminated,
       retryTerminatingApplication: retryTerminatingApplication)
   }
 
   func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
-    standard.showUpdateInstalledAndRelaunched(relaunched, acknowledgement: acknowledgement)
+    inner.showUpdateInstalledAndRelaunched(relaunched, acknowledgement: acknowledgement)
   }
 
   func showUpdateInFocus() {
-    standard.showUpdateInFocus()
+    inner.showUpdateInFocus()
   }
 
   func dismissUpdateInstallation() {
-    standard.dismissUpdateInstallation()
+    inner.dismissUpdateInstallation()
   }
 }
