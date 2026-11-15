@@ -10,6 +10,7 @@ import shutil
 import shlex
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -75,9 +76,13 @@ class ReleaseTests(unittest.TestCase):
                      '-buildVersion) echo 23C64;;\n*) exit 89;;\nesac')
         self.environment = {key: value for key, value in os.environ.items()
                             if not key.startswith('GIT_')}
+        # bundle.sh keeps HOME but not the GIT_ variables: its git reads the configuration of
+        # this empty home.
+        home = self.root / 'home'
+        home.mkdir()
         self.environment.update(PATH=str(self.tools) + os.pathsep + os.environ['PATH'],
                                 PYTHONDONTWRITEBYTECODE='1', GIT_CONFIG_NOSYSTEM='1',
-                                GIT_CONFIG_GLOBAL=os.devnull)
+                                GIT_CONFIG_GLOBAL=os.devnull, HOME=str(home))
 
     def command(self, name, body):
         path = self.tools / name
@@ -134,15 +139,15 @@ class ReleaseTests(unittest.TestCase):
         ditto = position('ditto "$framework_src" "' + FRAMEWORK + '"')
         xpc = position("'Versions/B/XPCServices'")
         license_copy = position('Contents/Resources/Sparkle-LICENSE.txt')
-        autoupdate = position('codesign --force --sign - "' + FRAMEWORK + '/Versions/B/Autoupdate"')
-        updater = position('codesign --force --sign - "' + FRAMEWORK + '/Versions/B/Updater.app"')
-        framework = position('codesign --force --sign - "' + FRAMEWORK + '"')
-        signs = [index for index, line in enumerate(lines)
-                 if line.startswith('codesign --force --sign - "$app"')]
+        autoupdate = position('"${sign[@]}" "' + FRAMEWORK + '/Versions/B/Autoupdate"')
+        updater = position('"${sign[@]}" "' + FRAMEWORK + '/Versions/B/Updater.app"')
+        framework = position('"${sign[@]}" "' + FRAMEWORK + '"')
+        signs = [index for index, line in enumerate(lines) if line == '"${sign[@]}" "$app"']
         verify = position('codesign --verify --deep --strict "$app"')
         adhoc = position('python3 scripts/adhoc-check.py "$app"')
         manifest = position('python3 scripts/manifest.py write "$app"')
         self.assertEqual(len(signs), 2)
+        self.assertEqual(len([line for line in lines if '"${sign[@]}"' in line]), 5)
         self.assertLess(ditto, xpc)
         self.assertLess(xpc, autoupdate)
         self.assertLess(autoupdate, updater)
@@ -156,15 +161,48 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("'XPCServices'", text)
         self.assertIn(SPARKLE_LICENSE_SHA256, text)
         for line in lines:
-            if line.lstrip().startswith('codesign '):
+            if 'codesign' in line or '"${sign[@]}"' in line:
                 with self.subTest(line=line):
-                    words = shlex.split(line.strip())
-                    for forbidden in ('--options', '-o', '--timestamp', '--entitlements'):
-                        self.assertNotIn(forbidden, words)
-                    if '--sign' in words:
-                        self.assertEqual(words[words.index('--sign') + 1], '-')
+                    words = shlex.split(line.strip().removeprefix('sign=(').removesuffix(')'))
+                    self.assertNotIn('--entitlements', words)
                     if '--deep' in words:
-                        self.assertIn('--verify', words)
+                        self.assertEqual(line, 'codesign --verify --deep --strict "$app"')
+                    if '--sign' in words or '"${sign[@]}"' in line:
+                        self.assertNotIn('--deep', words)
+
+    def test_bundle_chooses_the_signing_arrays_from_the_identity(self):
+        lines = (SCRIPTS / 'bundle.sh').read_text().splitlines()
+        block = ['if [[ -n ${MONOPODS_SIGNING_IDENTITY:-} ]]; then',
+                 '  [[ $MONOPODS_SIGNING_IDENTITY =~ ^[0-9A-F]{40}$ ]] || usage',
+                 '  sign=(codesign --force --options runtime --timestamp --sign '
+                 '"$MONOPODS_SIGNING_IDENTITY")',
+                 '  mode=developer-id',
+                 'else',
+                 '  sign=(codesign --force --sign -)',
+                 '  mode=adhoc',
+                 'fi']
+        starts = [index for index in range(len(lines)) if lines[index:index + len(block)] == block]
+        self.assertEqual(len(starts), 1)
+        self.assertEqual(len([line for line in lines if line.lstrip().startswith('sign=')]), 2)
+        self.assertEqual(len([line for line in lines if line.lstrip().startswith('mode=')]), 2)
+        self.assertLess(starts[0], lines.index('source_commit=$(source_identity)'))
+        self.assertNotIn('codesign --force', '\n'.join(lines[:starts[0]] + lines[starts[0] + 8:]))
+
+    def test_bundle_checks_the_signature_of_the_chosen_mode(self):
+        lines = (SCRIPTS / 'bundle.sh').read_text().splitlines()
+        block = ['case $mode in',
+                 '  adhoc) python3 scripts/adhoc-check.py "$app" ;;',
+                 '  developer-id) python3 scripts/developer-id-check.py "$app" ;;',
+                 '  *) exit 1 ;;',
+                 'esac']
+        starts = [index for index in range(len(lines)) if lines[index:index + len(block)] == block]
+        self.assertEqual(len(starts), 1)
+        self.assertEqual(lines[starts[0] - 1], 'python3 scripts/manifest.py verify "$app" "$source_commit"')
+        self.assertEqual(lines[starts[0] - 2], 'codesign --verify --deep --strict "$app"')
+        self.assertEqual(sum('adhoc-check.py' in line for line in lines), 1)
+        self.assertEqual(sum('developer-id-check.py' in line for line in lines), 1)
+        self.assertEqual(lines[-1], "printf 'Built %s with %s signing; no runtime or login item "
+                                    "was started.\\n' \"$app\" \"$mode\"")
 
     def test_sparkle_license_is_the_pinned_text(self):
         data = (SCRIPTS.parent / 'ThirdParty/Sparkle-LICENSE.txt').read_bytes()
@@ -321,7 +359,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(set(value), {'v', 'sourceCommit', 'build', 'manifestSha256',
                                      'dmgSha256', 'bundleTreeSha256', 'toolchain', 'createdUTC',
                                      'signingMode'})
-        self.assertEqual(value['signingMode'], 'ad-hoc')
+        self.assertEqual(value['signingMode'], 'developer-id')
         self.assertEqual(value['v'], 1)
         self.assertEqual(value['sourceCommit'], COMMIT)
         self.assertEqual(value['build'], DIGEST)
@@ -468,7 +506,7 @@ class ReleaseTests(unittest.TestCase):
                                              'createdUTC', 'signingMode', 'appcastSha256',
                                              'bundleVersion', 'shortVersion', 'feedURL',
                                              'publicEDKey'})
-                self.assertEqual(value['signingMode'], 'ad-hoc')
+                self.assertEqual(value['signingMode'], 'developer-id')
                 self.assertEqual(value['appcastSha256'],
                                  hashlib.sha256(feed.read_bytes()).hexdigest())
                 self.assertEqual((value['bundleVersion'], value['shortVersion']), ('3', '1.2.3'))
@@ -614,6 +652,57 @@ class ReleaseTests(unittest.TestCase):
                 result = self.bundle_command(*arguments)
                 self.assertEqual(result.returncode, 64, result.stderr)
                 self.assertFalse((self.repo / 'build-reached').exists())
+
+    def test_bundle_refuses_a_malformed_signing_identity_before_build(self):
+        self.init_git()
+        for identity in ('0123456789abcdef0123456789abcdef01234567', '0123456789ABCDEF',
+                         '0123456789ABCDEF0123456789ABCDEF012345678',
+                         '0123456789ABCDEF0123456789ABCDEF0123456G',
+                         'Developer ID Application: Example Developer (ABCDE12345)',
+                         ' 0123456789ABCDEF0123456789ABCDEF01234567'):
+            with self.subTest(identity=identity):
+                self.environment['MONOPODS_SIGNING_IDENTITY'] = identity
+                result = self.bundle_command()
+                self.assertEqual(result.returncode, 64, result.stderr)
+                self.assertFalse((self.repo / 'build-reached').exists())
+
+    def test_bundle_with_a_well_formed_identity_reaches_the_build(self):
+        self.init_git()
+        self.environment['MONOPODS_SIGNING_IDENTITY'] = '0123456789ABCDEF0123456789ABCDEF01234567'
+        result = self.bundle_command()
+        self.assertEqual(result.returncode, 91, result.stderr)
+        self.assertTrue((self.repo / 'build-reached').exists())
+
+    def test_bundle_children_receive_only_the_minimal_environment(self):
+        self.init_git()
+        record = ('#!{python}\nimport json, os, sys\n'
+                  'with open({log!r}, "a") as log:\n'
+                  '    log.write(json.dumps([sys.argv[0], sorted(os.environ)]) + "\\n")\n')
+        log = self.root / 'environment.log'
+        dirname = self.tools / 'dirname'
+        dirname.write_text(record.format(python=sys.executable, log=str(log))
+                           + 'os.execv("/usr/bin/dirname", ["dirname", *sys.argv[1:]])\n')
+        swift = self.tools / 'swift'
+        swift.write_text(record.format(python=sys.executable, log=str(log)) + 'sys.exit(91)\n')
+        for path in (dirname, swift):
+            path.chmod(0o700)
+        secrets = {'MONOPODS_FIXTURE_TOKEN': 'fake-secret-value-1', 'GH_TOKEN': 'fake-secret-value-2',
+                   'ZZ_ARBITRARY_FIXTURE_NAME': 'fake-secret-value-3', 'A-B': 'fake-secret-value-4'}
+        self.environment.update(secrets)
+        self.environment['MONOPODS_SIGNING_IDENTITY'] = '0123456789ABCDEF0123456789ABCDEF01234567'
+        result = self.bundle_command()
+        self.assertEqual(result.returncode, 91, result.stderr)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual([Path(call[0]).name for call in calls], ['dirname', 'swift'])
+        minimal = {'HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'USER', 'LOGNAME',
+                   'DEVELOPER_DIR'}
+        generated = {'PWD', 'OLDPWD', 'SHLVL', '_', '__CF_USER_TEXT_ENCODING', 'CPATH', 'LIBRARY_PATH',
+                     'MANPATH', 'SDKROOT'}
+        for name, variables in calls:
+            with self.subTest(child=Path(name).name):
+                self.assertEqual(set(variables) - minimal - generated, set())
+        for value in secrets.values():
+            self.assertNotIn(value, result.stdout + result.stderr + log.read_text())
 
     def test_bundle_embeds_no_paths_and_checks_the_built_app(self):
         text = (SCRIPTS / 'bundle.sh').read_text()

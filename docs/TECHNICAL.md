@@ -96,10 +96,11 @@ cannot operate the audio engine. A failed or unconfirmed replacement blocks
 operation until its outcome is established. Sparkle starts only in the instance
 that owns the runtime lock, and only in builds with an update channel.
 
-Release builds, including Sparkle's helper tools, are signed ad hoc and are not
-notarized. Sparkle installs an update only when its disk image carries a valid
-EdDSA signature from the key embedded in the installed app and the new version's
-ad hoc code signature is valid.
+Release builds, including Sparkle's helper tools, are signed with a Developer ID
+and the hardened runtime; the disk image is notarized and stapled. Sparkle
+installs an update only when its disk image carries a valid EdDSA signature from
+the key embedded in the installed app and the new version's code signature is
+valid.
 
 ## Build from source
 
@@ -123,8 +124,10 @@ destination. The app keeps its state in
 another mode, owner or a symbolic link blocks operation. Missing or unsafe
 configuration blocks operation.
 
-`scripts/bundle.sh` produces `dist/MonoPods.app`. It signs the bundle ad hoc and
-verifies its signature and `Manifest.json`; it does not notarize or launch it.
+`scripts/bundle.sh` produces `dist/MonoPods.app`. It signs the bundle ad hoc, or
+with a Developer ID and the hardened runtime when `MONOPODS_SIGNING_IDENTITY`
+holds the SHA-1 of the certificate, and verifies its signature and
+`Manifest.json`; it does not notarize or launch it.
 The bundle includes Plus Jakarta Sans SemiBold and its SIL OFL 1.1 notice in
 `Contents/Resources/`. The About title registers the font for the process only,
 falling back to bold system text if it cannot load. Other app text uses the system font.

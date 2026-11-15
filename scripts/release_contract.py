@@ -104,7 +104,7 @@ def validate(document, *, channel=True):
     ):
         if not matches(document[key], "[0-9a-f]{64}"):
             raise ValueError("invalid digest")
-    if document["signingMode"] != "ad-hoc":
+    if type(document["signingMode"]) is not str or document["signingMode"] != "developer-id":
         raise ValueError("invalid signing mode")
     timestamp(document["createdUTC"])
     toolchain = document["toolchain"]

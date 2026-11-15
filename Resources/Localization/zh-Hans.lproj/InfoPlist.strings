@@ -1,2 +1,2 @@
-"NSBluetoothAlwaysUsageDescription" = "MonoPods 会观察已连接的蓝牙音频输出和入耳检测状态。";
+"NSBluetoothAlwaysUsageDescription" = "MonoPods 会观察已连接的蓝牙音频输出和人耳检测状态。";
 "NSBluetoothPeripheralUsageDescription" = "MonoPods 会观察已连接的蓝牙音频设备，但不会进行扫描。";

@@ -75,6 +75,14 @@ class ContractTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 API["validate"](value)
 
+    def test_only_the_developer_id_signing_mode_is_accepted(self):
+        self.assertEqual(self.receipt["signingMode"], "developer-id")
+        API["validate"](self.receipt)
+        for mode in ("ad-hoc", "Developer-ID", "developer-id ", "", None, 1, True,
+                     ["developer-id"], {"developer-id": True}):
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                API["validate"](dict(self.receipt, signingMode=mode))
+
     def test_reader_rejects_duplicates_encoding_size_and_every_truncation(self):
         data = json.dumps(self.receipt).encode()
         bad = [

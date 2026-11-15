@@ -59,7 +59,7 @@ private let expectedLines: [String: [String]] = [
     "Detecção automática de ouvido: Desconhecida", "Saída de áudio: Nenhuma", "Modelo: Nenhum",
   ],
   "ja": ["自動耳検出: オン", "自動耳検出: オフ", "自動耳検出: 不明", "オーディオ出力: なし", "モデル: なし"],
-  "zh-Hans": ["自动入耳检测：开启", "自动入耳检测：关闭", "自动入耳检测：未知", "音频输出：无", "型号：无"],
+  "zh-Hans": ["自动人耳检测：开启", "自动人耳检测：关闭", "自动人耳检测：未知", "音频输出：无", "型号：无"],
 ]
 
 @Test func detailsLinesAgreeWithTheirLabelInEveryLanguage() throws {

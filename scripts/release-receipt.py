@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Record release identity outside the repository after read-only validation.
 
-Every build is signed ad hoc; with --appcast the receipt also binds the feed and the channel."""
+Every release is signed with a Developer ID and notarized; with --appcast the receipt also
+binds the feed and the channel."""
 import base64
 import binascii
 from datetime import datetime, timezone
@@ -20,7 +21,7 @@ import appcast
 from release_contract import bundle_tree_hash, internal_link, validate
 from manifest import artifact_bytes, reject_symlinks, verify_manifest
 
-SIGNING_MODE = 'ad-hoc'
+SIGNING_MODE = 'developer-id'
 BUNDLE_INFO = runpy.run_path(str(Path(__file__).resolve().parent / 'bundle-info.py'))
 
 

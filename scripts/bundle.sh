@@ -1,5 +1,24 @@
 #!/bin/bash
 set -euo pipefail
+# A minimal environment before any other command: when a variable outside the list is present,
+# the script starts again through env -i with only the listed ones (shell builtins until then).
+minimal=(HOME PATH TMPDIR LANG LC_ALL LC_CTYPE USER LOGNAME DEVELOPER_DIR MONOPODS_SIGNING_IDENTITY)
+clean=1
+for name in $(compgen -e); do
+  case " ${minimal[*]} PWD SHLVL " in
+    *" $name "*) ;;
+    *) clean=0 ;;
+  esac
+done
+if [[ $clean == 0 ]]; then
+  keep=()
+  for name in "${minimal[@]}"; do
+    [[ -z ${!name+set} ]] || keep+=("$name=${!name}")
+  done
+  exec /usr/bin/env -i ${keep[@]+"${keep[@]}"} "$BASH" "$0" "$@"
+fi
+# The identity stays a shell variable; codesign gets it as an argument.
+export -n MONOPODS_SIGNING_IDENTITY
 cd "$(dirname "$0")/.."
 usage() { printf 'Usage: scripts/bundle.sh [--update-channel FILE [--candidate-version N]]\n' >&2; exit 64; }
 # The channel is injected at bundle time; without it the build has no updater.
@@ -13,6 +32,15 @@ if [[ $# -ge 1 ]]; then
     info_options+=(--candidate-version "$2")
     shift 2
   fi
+fi
+# Developer ID only with the certificate's SHA-1 in the environment; otherwise ad hoc as before.
+if [[ -n ${MONOPODS_SIGNING_IDENTITY:-} ]]; then
+  [[ $MONOPODS_SIGNING_IDENTITY =~ ^[0-9A-F]{40}$ ]] || usage
+  sign=(codesign --force --options runtime --timestamp --sign "$MONOPODS_SIGNING_IDENTITY")
+  mode=developer-id
+else
+  sign=(codesign --force --sign -)
+  mode=adhoc
 fi
 # Bind artifacts to a clean, reachable source commit before creating any output.
 source_identity() {
@@ -145,20 +173,24 @@ while IFS= read -r rpath; do
   fi
 done <<< "$rpaths"
 python3 scripts/macho.py check-app "$app"
-# Ad hoc signatures from the inside out, without hardened runtime. The framework seal
-# changes with the removal of the services, so the framework is signed after its components.
-codesign --force --sign - "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
-codesign --force --sign - "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
-codesign --force --sign - "$app/Contents/Frameworks/Sparkle.framework"
+# Signatures from the inside out, without --deep. The framework seal changes with the
+# removal of the services, so the framework is signed after its components.
+"${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+"${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
+"${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework"
 # The preliminary signature creates the Mach-O signature load command. Hashes omit
 # only its embedded payload, so the final resource seal cannot create a hash cycle.
-codesign --force --sign - "$app"
+"${sign[@]}" "$app"
 # Sources must still match the recorded commit after the build has read them.
 [[ "$(source_identity)" == "$source_commit" ]]
 python3 scripts/manifest.py write "$app" "$source_commit"
-codesign --force --sign - "$app"
+"${sign[@]}" "$app"
 codesign --verify --deep --strict "$app"
 python3 scripts/manifest.py verify "$app" "$source_commit"
-python3 scripts/adhoc-check.py "$app"
+case $mode in
+  adhoc) python3 scripts/adhoc-check.py "$app" ;;
+  developer-id) python3 scripts/developer-id-check.py "$app" ;;
+  *) exit 1 ;;
+esac
 python3 scripts/artifact-scan.py bundle "$app" --forbid "$PWD" --forbid "$HOME" --exclude-prefix Contents/Frameworks/Sparkle.framework/
-printf 'Built %s with ad hoc signing; no runtime or login item was started.\n' "$app"
+printf 'Built %s with %s signing; no runtime or login item was started.\n' "$app" "$mode"
