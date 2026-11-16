@@ -27,6 +27,7 @@ import Sparkle
   /// Install and Relaunch was clicked on the alert of the update now in progress. Sparkle asks
   /// again once the update is prepared; that question is answered with this choice.
   private var installChosen = false
+  private var retryTermination: (() -> Void)?
 
   public init(
     appName: String, currentVersion: String, strings: Bundle,
@@ -169,13 +170,15 @@ import Sparkle
     withApplicationTerminated applicationTerminated: Bool,
     retryTerminatingApplication: @escaping () -> Void
   ) {
-    let retry =
-      applicationTerminated
-      ? Button(localized("Install and Relaunch"), enabled: false, action: nil)
-      : Button(localized("Install and Relaunch"), closes: false) { retryTerminatingApplication() }
+    guard applicationTerminated else {
+      close()
+      retryTermination = retryTerminatingApplication
+      return
+    }
     show(
-      localized("Installing Update\u{2026}"), bar: Self.makeBar(), buttons: [retry], activate: false
-    )
+      localized("Installing Update\u{2026}"), bar: Self.makeBar(),
+      buttons: [Button(localized("Install and Relaunch"), enabled: false, action: nil)],
+      activate: false)
   }
 
   public func showUpdateInstalledAndRelaunched(
@@ -187,6 +190,13 @@ import Sparkle
   }
 
   public func showUpdateInFocus() {
+    if alert == nil, let retry = retryTermination {
+      show(
+        localized("Installing Update\u{2026}"), bar: Self.makeBar(),
+        buttons: [Button(localized("Install and Relaunch"), closes: false, action: retry)],
+        activate: true)
+      return
+    }
     guard let alert else { return }
     present(alert.window, true)
   }
@@ -304,6 +314,7 @@ import Sparkle
     actions = []
     downloadBar = nil
     extractionBar = nil
+    retryTermination = nil
   }
 
   private func updateDownloadBar() {
