@@ -24,6 +24,9 @@ import Sparkle
   private var extractionBar: NSProgressIndicator?
   private var expectedLength: UInt64 = 0
   private var receivedLength: UInt64 = 0
+  /// Install and Relaunch was clicked on the alert of the update now in progress. Sparkle asks
+  /// again once the update is prepared; that question is answered with this choice.
+  private var installChosen = false
 
   public init(
     appName: String, currentVersion: String, strings: Bundle,
@@ -73,6 +76,7 @@ import Sparkle
   }
 
   public func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
+    installChosen = false
     show(
       localized("Checking for Updates\u{2026}"), bar: Self.makeBar(),
       buttons: [Button(localized("Cancel"), cancels: true) { cancellation() }], activate: true)
@@ -144,7 +148,13 @@ import Sparkle
     Self.set(extractionBar, to: progress.isFinite ? min(max(progress, 0), 1) : nil)
   }
 
+  /// Asks only when the user has not already chosen Install and Relaunch for this update.
   public func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
+    if installChosen {
+      installChosen = false
+      reply(.install)
+      return
+    }
     show(
       format(localized("%@ is ready to install."), appName),
       buttons: [
@@ -171,6 +181,7 @@ import Sparkle
   public func showUpdateInstalledAndRelaunched(
     _ relaunched: Bool, acknowledgement: @escaping () -> Void
   ) {
+    installChosen = false
     close()
     acknowledgement()
   }
@@ -182,6 +193,7 @@ import Sparkle
 
   /// Like Sparkle's standard driver: closes everything and drops the callbacks uncalled.
   public func dismissUpdateInstallation() {
+    installChosen = false
     close()
   }
 
@@ -193,6 +205,7 @@ import Sparkle
     version: String, informationOnly: Bool, infoURL: URL?, userInitiated: Bool,
     reply: @escaping (SPUUserUpdateChoice) -> Void
   ) {
+    installChosen = false
     let message = format(
       localized("%1$@ %2$@ is available (you have %3$@)."), appName, version, currentVersion)
     let first =
@@ -201,7 +214,10 @@ import Sparkle
         if let infoURL { openURL(infoURL) }
         reply(.dismiss)
       }
-      : Button(localized("Install and Relaunch")) { reply(.install) }
+      : Button(localized("Install and Relaunch")) { [weak self] in
+        self?.installChosen = true
+        reply(.install)
+      }
     show(
       message, buttons: [first, Button(localized("Later"), cancels: true) { reply(.dismiss) }],
       activate: userInitiated)

@@ -259,6 +259,51 @@ private func notFound(reason: Int?) -> NSError {
   }
 }
 
+/// Sparkle asks again once the update is prepared; the choice made on the update alert answers it.
+@MainActor @Test func installChosenOnTheUpdateIsNotAskedAgainWhenReady() throws {
+  let recorder = Recorder()
+  let driver = makeDriver(recorder, strings: try strings("en"))
+  let found = Calls()
+  driver.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true,
+    reply: found.reply())
+  click(try button("Install and Relaunch", of: driver))
+  driver.showDownloadInitiated(cancellation: {})
+  driver.showDownloadDidStartExtractingUpdate()
+  let shownBeforeReady = recorder.presented.count
+  let ready = Calls()
+  driver.showReady(toInstallAndRelaunch: ready.reply())
+  #expect(found.choices == [.install])
+  #expect(ready.choices == [.install])
+  #expect(recorder.presented.count == shownBeforeReady)
+  #expect(driver.alert?.messageText != "MonoPods is ready to install.")
+}
+
+/// Later, a dismissed installation or an update prepared in the background still ask.
+@MainActor @Test func readyAsksWhenInstallWasNotChosenForThisUpdate() throws {
+  let later = makeDriver(Recorder(), strings: try strings("en"))
+  later.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true, reply: { _ in })
+  click(try button("Later", of: later))
+  let laterReady = Calls()
+  later.showReady(toInstallAndRelaunch: laterReady.reply())
+  #expect(laterReady.choices.isEmpty && later.alert?.messageText == "MonoPods is ready to install.")
+
+  let dismissed = makeDriver(Recorder(), strings: try strings("en"))
+  dismissed.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true, reply: { _ in })
+  click(try button("Install and Relaunch", of: dismissed))
+  dismissed.dismissUpdateInstallation()
+  let dismissedReady = Calls()
+  dismissed.showReady(toInstallAndRelaunch: dismissedReady.reply())
+  #expect(dismissedReady.choices.isEmpty && dismissed.alert != nil)
+
+  let background = makeDriver(Recorder(), strings: try strings("en"))
+  let backgroundReady = Calls()
+  background.showReady(toInstallAndRelaunch: backgroundReady.reply())
+  #expect(backgroundReady.choices.isEmpty && background.alert != nil)
+}
+
 @MainActor @Test func installingRetriesOnEveryClickOnlyWhileTheAppRuns() throws {
   let driver = makeDriver(Recorder(), strings: try strings("en"))
   let calls = Calls()
