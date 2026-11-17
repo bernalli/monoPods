@@ -259,16 +259,78 @@ private func notFound(reason: Int?) -> NSError {
   }
 }
 
+/// Sparkle asks again once the update is prepared; the choice made on the update alert answers it.
+@MainActor @Test func installChosenOnTheUpdateIsNotAskedAgainWhenReady() throws {
+  let recorder = Recorder()
+  let driver = makeDriver(recorder, strings: try strings("en"))
+  let found = Calls()
+  driver.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true,
+    reply: found.reply())
+  click(try button("Install and Relaunch", of: driver))
+  driver.showDownloadInitiated(cancellation: {})
+  driver.showDownloadDidStartExtractingUpdate()
+  let shownBeforeReady = recorder.presented.count
+  let ready = Calls()
+  driver.showReady(toInstallAndRelaunch: ready.reply())
+  #expect(found.choices == [.install])
+  #expect(ready.choices == [.install])
+  #expect(recorder.presented.count == shownBeforeReady)
+  #expect(driver.alert?.messageText != "MonoPods is ready to install.")
+  driver.showInstallingUpdate(withApplicationTerminated: false, retryTerminatingApplication: {})
+  #expect(driver.alert == nil && recorder.presented.count == shownBeforeReady)
+}
+
+/// Later, a dismissed installation or an update prepared in the background still ask.
+@MainActor @Test func readyAsksWhenInstallWasNotChosenForThisUpdate() throws {
+  let later = makeDriver(Recorder(), strings: try strings("en"))
+  later.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true, reply: { _ in })
+  click(try button("Later", of: later))
+  let laterReady = Calls()
+  later.showReady(toInstallAndRelaunch: laterReady.reply())
+  #expect(laterReady.choices.isEmpty && later.alert?.messageText == "MonoPods is ready to install.")
+
+  let dismissed = makeDriver(Recorder(), strings: try strings("en"))
+  dismissed.presentUpdate(
+    version: "1.1.1", informationOnly: false, infoURL: nil, userInitiated: true, reply: { _ in })
+  click(try button("Install and Relaunch", of: dismissed))
+  dismissed.dismissUpdateInstallation()
+  let dismissedReady = Calls()
+  dismissed.showReady(toInstallAndRelaunch: dismissedReady.reply())
+  #expect(dismissedReady.choices.isEmpty && dismissed.alert != nil)
+
+  let background = makeDriver(Recorder(), strings: try strings("en"))
+  let backgroundReady = Calls()
+  background.showReady(toInstallAndRelaunch: backgroundReady.reply())
+  #expect(backgroundReady.choices.isEmpty && background.alert != nil)
+}
+
 @MainActor @Test func installingRetriesOnEveryClickOnlyWhileTheAppRuns() throws {
-  let driver = makeDriver(Recorder(), strings: try strings("en"))
+  let recorder = Recorder()
+  let driver = makeDriver(recorder, strings: try strings("en"))
   let calls = Calls()
   driver.showInstallingUpdate(
     withApplicationTerminated: false, retryTerminatingApplication: calls.callback())
+  #expect(driver.alert == nil && recorder.presented.isEmpty && calls.count == 0)
+  driver.showUpdateInFocus()
+  #expect(recorder.presented.map(\.activate) == [true])
   #expect(driver.alert?.messageText == "Installing Update\u{2026}")
   #expect(try bar(of: driver).isIndeterminate)
   let retry = try button("Install and Relaunch", of: driver)
   for _ in 0..<3 { click(retry) }
   #expect(calls.count == 3 && driver.alert != nil)
+  driver.dismissUpdateInstallation()
+  click(retry)
+  driver.showUpdateInFocus()
+  #expect(calls.count == 3 && driver.alert == nil)
+
+  let dismissed = makeDriver(Recorder(), strings: try strings("en"))
+  dismissed.showInstallingUpdate(
+    withApplicationTerminated: false, retryTerminatingApplication: calls.callback())
+  dismissed.dismissUpdateInstallation()
+  dismissed.showUpdateInFocus()
+  #expect(dismissed.alert == nil && calls.count == 3)
 
   let terminated = makeDriver(Recorder(), strings: try strings("en"))
   let none = Calls()
@@ -281,7 +343,7 @@ private func notFound(reason: Int?) -> NSError {
 @MainActor @Test func installedAcknowledgesAtOnceWithoutAWindow() throws {
   let recorder = Recorder()
   let driver = makeDriver(recorder, strings: try strings("en"))
-  driver.showInstallingUpdate(withApplicationTerminated: false, retryTerminatingApplication: {})
+  driver.showInstallingUpdate(withApplicationTerminated: true, retryTerminatingApplication: {})
   let calls = Calls()
   driver.showUpdateInstalledAndRelaunched(true, acknowledgement: calls.callback())
   #expect(calls.count == 1 && driver.alert == nil && recorder.presented.count == 1)
@@ -389,17 +451,31 @@ private struct SplitMix64 {
     let driver = makeDriver(recorder, strings: english)
     let ledger = Ledger()
     var seen: [NSButton] = []
+    var consentButton: NSButton?
+    var expectsAutomaticInstall = false
+    @MainActor func clickAndModel(_ pressed: NSButton) {
+      if pressed === consentButton, pressed.isEnabled,
+        driver.alert?.buttons.contains(where: { $0 === pressed }) == true
+      {
+        expectsAutomaticInstall = true
+      }
+      click(pressed)
+    }
     for _ in 0..<(1 + generator.below(40)) {
       switch generator.below(18) {
       case 0:
         driver.show(SPUUpdatePermissionRequest(systemProfile: [])) { _ in }
-      case 1: driver.showUserInitiatedUpdateCheck(cancellation: ledger.callback())
+      case 1:
+        expectsAutomaticInstall = false
+        driver.showUserInitiatedUpdateCheck(cancellation: ledger.callback())
       case 2:
+        expectsAutomaticInstall = false
         let informationOnly = generator.below(2) == 0
         driver.presentUpdate(
           version: "1.1.1", informationOnly: informationOnly,
           infoURL: generator.below(2) == 0 ? page : nil, userInitiated: generator.below(2) == 0,
           reply: ledger.reply(informationOnly: informationOnly))
+        consentButton = informationOnly ? nil : driver.alert?.buttons.first
       case 3: driver.showUpdateReleaseNotesFailedToDownloadWithError(notFound(reason: nil))
       case 4:
         driver.showUpdateNotFoundWithError(
@@ -412,25 +488,39 @@ private struct SplitMix64 {
       case 8: driver.showDownloadDidReceiveData(ofLength: lengths[generator.below(lengths.count)])
       case 9: driver.showDownloadDidStartExtractingUpdate()
       case 10: driver.showExtractionReceivedProgress(progress[generator.below(progress.count)])
-      case 11: driver.showReady(toInstallAndRelaunch: ledger.reply(informationOnly: false))
+      case 11:
+        let choicesBefore = ledger.choices.count
+        let presentationsBefore = recorder.presented.count
+        driver.showReady(toInstallAndRelaunch: ledger.reply(informationOnly: false))
+        if expectsAutomaticInstall {
+          #expect(ledger.choices.count == choicesBefore + 1)
+          #expect(ledger.choices.last?.choice == .install)
+          #expect(recorder.presented.count == presentationsBefore)
+        } else {
+          #expect(ledger.choices.count == choicesBefore)
+          #expect(driver.alert?.messageText == "MonoPods is ready to install.")
+        }
+        expectsAutomaticInstall = false
       case 12:
         driver.showInstallingUpdate(
           withApplicationTerminated: generator.below(2) == 0,
           retryTerminatingApplication: ledger.callback(retry: true))
       case 13:
+        expectsAutomaticInstall = false
         driver.showUpdateInstalledAndRelaunched(
           generator.below(2) == 0, acknowledgement: ledger.callback())
       case 14: driver.showUpdateInFocus()
       case 15:
+        expectsAutomaticInstall = false
         driver.dismissUpdateInstallation()
         ledger.freeze()
         #expect(driver.alert == nil)  // D-I3
       case 16:
         if let buttons = driver.alert?.buttons, !buttons.isEmpty {
-          click(buttons[generator.below(buttons.count)])
+          clickAndModel(buttons[generator.below(buttons.count)])
         }
       default:
-        if !seen.isEmpty { click(seen[generator.below(seen.count)]) }
+        if !seen.isEmpty { clickAndModel(seen[generator.below(seen.count)]) }
       }
       seen.append(contentsOf: driver.alert?.buttons ?? [])
       if let alert = driver.alert {  // D-I1
