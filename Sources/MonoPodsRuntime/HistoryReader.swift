@@ -26,6 +26,7 @@ private struct HistoryRequest: Equatable {
   var bytes = 0
   var digest = SHA256()
   var stopping = false
+  var superseded = false
   var evidenceHash: String { digest.finalize().map { String(format: "%02x", $0) }.joined() }
 
   init(request: HistoryRequest, process: any HistoryProcess) {
@@ -35,6 +36,15 @@ private struct HistoryRequest: Equatable {
   func stop() {
     guard !stopping else { return }
     stopping = true
+    if !superseded {
+      superseded = true
+      process.stop()
+    }
+  }
+  /// Signals an active child whose context is already obsolete without discarding final chunks.
+  func supersede() {
+    guard !stopping, !superseded else { return }
+    superseded = true
     process.stop()
   }
 }
@@ -74,6 +84,9 @@ private struct HistoryRequest: Equatable {
     let request = HistoryRequest(id: id, context: context)
     guard active?.request != request, pending != request else { return }
     pending = request
+    if let active, active.request.context != context {
+      active.supersede()
+    }
     pump()
   }
 

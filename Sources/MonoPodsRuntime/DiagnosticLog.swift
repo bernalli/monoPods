@@ -31,9 +31,10 @@ public final class DiagnosticLog {
     var info = stat()
     guard fstat(fd, &info) == 0 else { throw RuntimeError.io(errno) }
     if info.st_size > 0 && info.st_size + Int64(line.count) > maximumBytes {
-      if let old = try files.read("trace-v2.jsonl.1", limit: Int(maximumBytes) + 65536) {
-        _ = old
-      }
+      do {
+        let existing = try files.checkedFile("trace-v2.jsonl.1", flags: O_RDONLY)
+        close(existing)
+      } catch RuntimeError.io(ENOENT) {}
       guard
         renameat(files.descriptor, "trace-v2.jsonl", files.descriptor, "trace-v2.jsonl.1") == 0
       else {

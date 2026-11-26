@@ -51,6 +51,8 @@ struct ObservedSystemRoute {
 @MainActor struct RouteObservationAccess {
   var add: (@escaping AudioObjectPropertyListenerBlock) -> Bool
   var remove: (@escaping AudioObjectPropertyListenerBlock) -> Void
+  var addServiceRestart: (@escaping AudioObjectPropertyListenerBlock) -> Bool = { _ in true }
+  var removeServiceRestart: (@escaping AudioObjectPropertyListenerBlock) -> Void = { _ in }
   var read: () -> ObservedSystemRoute?
 
   static var live: Self {
@@ -64,11 +66,26 @@ struct ObservedSystemRoute {
         var property = outputProperty
         AudioObjectRemovePropertyListenerBlock(
           AudioObjectID(kAudioObjectSystemObject), &property, .main, block)
+      },
+      addServiceRestart: { block in
+        var property = serviceRestartProperty
+        return AudioObjectAddPropertyListenerBlock(
+          AudioObjectID(kAudioObjectSystemObject), &property, .main, block) == noErr
+      },
+      removeServiceRestart: { block in
+        var property = serviceRestartProperty
+        AudioObjectRemovePropertyListenerBlock(
+          AudioObjectID(kAudioObjectSystemObject), &property, .main, block)
       }, read: readSystemRoute)
   }
   private static var outputProperty: AudioObjectPropertyAddress {
     AudioObjectPropertyAddress(
       mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+      mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+  }
+  private static var serviceRestartProperty: AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress(
+      mSelector: kAudioHardwarePropertyServiceRestarted,
       mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
   }
   private static func readSystemRoute() -> ObservedSystemRoute? {
@@ -123,8 +140,13 @@ struct ObservedSystemRoute {
   private var disconnectToken: IOBluetoothUserNotification?
   private var tokens: [NSObjectProtocol] = []
   private var listener: AudioObjectPropertyListenerBlock?
+  private var restartListener: AudioObjectPropertyListenerBlock?
   private let routeAccess: RouteObservationAccess
   private var routeListenerReady = false
+  private var restartListenerReady = false
+  private var routeGeneration: UInt64 = 0
+  private var lifecycleGeneration: UInt64 = 0
+  private var running = false
   private var awake = true
   public private(set) var routeName: String?
   public private(set) var routeModel: AirPodsModel?
@@ -148,6 +170,8 @@ struct ObservedSystemRoute {
     self.routeAccess = routeAccess
   }
   public func start() {
+    running = true
+    let session = lifecycleGeneration
     central = CBCentralManager(
       delegate: self, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: false])
     connectionToken = IOBluetoothDevice.register(
@@ -159,15 +183,22 @@ struct ObservedSystemRoute {
       tokens.append(
         center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
           Task { @MainActor in
-            guard let self else { return }
+            guard let self, self.running, self.lifecycleGeneration == session else { return }
             self.awake = !sleeping
             self.environment()
-            self.refreshRoute()
+            if sleeping {
+              self.refreshRoute()
+            } else {
+              self.rearmRouteObservation()
+            }
           }
         })
     }
     let powerOff: @Sendable (Notification) -> Void = { [weak self] _ in
-      Task { @MainActor in self?.requestQuit() }
+      Task { @MainActor in
+        guard let self, self.running, self.lifecycleGeneration == session else { return }
+        self.requestQuit()
+      }
     }
     tokens.append(
       center.addObserver(
@@ -176,13 +207,45 @@ struct ObservedSystemRoute {
     startRouteObservation()
   }
   func startRouteObservation() {
+    let generation = routeGeneration
+    if restartListener == nil {
+      let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+        Task { @MainActor in
+          guard let self, self.routeGeneration == generation else { return }
+          self.rearmRouteObservation()
+        }
+      }
+      if routeAccess.addServiceRestart(block) {
+        restartListener = block
+        restartListenerReady = true
+      }
+    }
     guard listener == nil else { return }
     let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-      Task { @MainActor in self?.refreshRoute() }
+      Task { @MainActor in
+        guard let self, self.routeGeneration == generation else { return }
+        self.refreshRoute()
+      }
     }
     listener = block
     routeListenerReady = routeAccess.add(block)
     refreshRoute()
+  }
+  /// Removes stale HAL listeners after a coreaudiod reset or wake and registers fresh ones.
+  func rearmRouteObservation() {
+    removeRouteListeners()
+    startRouteObservation()
+  }
+  private func removeRouteListeners() {
+    routeGeneration &+= 1
+    let wasRouteReady = routeListenerReady
+    routeListenerReady = false
+    if wasRouteReady, let listener { routeAccess.remove(listener) }
+    listener = nil
+    let wasRestartReady = restartListenerReady
+    restartListenerReady = false
+    if wasRestartReady, let restartListener { routeAccess.removeServiceRestart(restartListener) }
+    restartListener = nil
   }
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
     environment()
@@ -233,8 +296,9 @@ struct ObservedSystemRoute {
     heartbeat.notice("HEARTBEAT \(nonce, privacy: .public) \(sequence, privacy: .public)")
   }
   public func stop() {
-    let wasReady = routeListenerReady
-    routeListenerReady = false
+    running = false
+    lifecycleGeneration &+= 1
+    removeRouteListeners()
     clearRoute()
     central = nil
     connectionToken?.unregister()
@@ -244,7 +308,5 @@ struct ObservedSystemRoute {
     let center = NSWorkspace.shared.notificationCenter
     for token in tokens { center.removeObserver(token) }
     tokens.removeAll()
-    if wasReady, let listener { routeAccess.remove(listener) }
-    listener = nil
   }
 }

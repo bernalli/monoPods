@@ -379,3 +379,21 @@ import Testing
   harness.processes[1].finish(-1)
   harness.assertBounds()
 }
+
+@MainActor @Test func staleContextHistoryStopsActiveProcessOnceWithoutStoppingSameContext() throws {
+  let harness = try HistoryHarness()
+  harness.request(1)
+  // A newer request for the same context does not interrupt the active read.
+  harness.request(2)
+  #expect(harness.processes[0].stops == 0)
+  let changed = ObservationContext(
+    routeEpoch: 2, streamEpoch: 1, connectionEpoch: 3, deviceOrdinal: 2)
+  harness.request(3, context: changed)
+  harness.request(4, context: changed)
+  #expect(harness.processes[0].stops == 1)
+  // Stopping the transport afterwards must not send a second stop to the same child.
+  harness.transport.stop()
+  #expect(harness.processes[0].stops == 1)
+  harness.processes[0].finish(-1)
+  harness.assertBounds()
+}

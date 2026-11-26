@@ -26,14 +26,21 @@ func envelopeFixture() throws -> [Data] {
   #expect(try LogRecord.decode(fixture[0]).process == "audioaccessoryd")
 }
 
-@Test func unknownEnvelopeKeysAndWrongTypesFailClosed() throws {
+@Test func unknownEnvelopeKeysAreIgnoredAndWrongTypesFailClosed() throws {
   let line = try envelopeFixture()[0]
   var object = try #require(JSONSerialization.jsonObject(with: line) as? [String: Any])
-  object["newUnverifiedField"] = 1
-  #expect(throws: (any Error).self) {
-    try SystemLogEnvelope.decode(JSONSerialization.data(withJSONObject: object))
+  object["newMacOSField"] = 1
+  object["futureNested"] = ["flag": true]
+  guard
+    case .event(let decoded) = try SystemLogEnvelope.decode(
+      JSONSerialization.data(withJSONObject: object))
+  else {
+    Issue.record("Expected an event record when extra top-level fields are present")
+    return
   }
-  object.removeValue(forKey: "newUnverifiedField")
+  #expect(decoded.process == "audioaccessoryd")
+  object.removeValue(forKey: "newMacOSField")
+  object.removeValue(forKey: "futureNested")
   for key in ["timestamp", "processImagePath", "subsystem", "eventMessage", "bootUUID"] {
     var bad = object
     bad[key] = true

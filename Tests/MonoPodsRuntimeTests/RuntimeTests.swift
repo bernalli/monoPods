@@ -332,3 +332,20 @@ func acquireReleasedLock(files: AtomicRuntimeFiles, name: String) throws -> Inst
   #expect(try files.read("trace-v2.jsonl") == nil)
   #expect(try files.read("trace-v2.jsonl.1") != nil)
 }
+
+@Test func diagnosticRotationRefusesSymlinkRotatedTarget() throws {
+  let root = try temporaryRuntime()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let files = try AtomicRuntimeFiles(directory: root)
+  let log = DiagnosticLog(files: files, maximumBytes: 1)
+  let utc = try SourceTime("2026-01-01T00:00:00Z")
+  let record = TraceRecord(
+    build: testBuild, run: 1, seq: 1, m: 1,
+    payload: .end(EndPayload(utc: utc, exitCode: 0)))
+  try log.append(record)
+  try FileManager.default.createSymbolicLink(
+    atPath: root.appendingPathComponent("trace-v2.jsonl.1").path,
+    withDestinationPath: root.appendingPathComponent("outside").path)
+  #expect(throws: (any Error).self) { try log.append(record) }
+  #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("outside").path))
+}
