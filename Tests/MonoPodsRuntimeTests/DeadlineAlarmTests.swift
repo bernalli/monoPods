@@ -121,19 +121,24 @@ private let millisecond: UInt64 = 1_000_000
 }
 
 @MainActor @Test func alarmReplacesAStaleDeadlineAndNeverRearmsAFiredOne() throws {
-  var now = Instant(continuousNanos: 0, utc: try SourceTime("2026-01-01T00:00:00Z"))
+  @MainActor final class State {
+    var now: Instant
+    var fired: [UInt64] = []
+    init(now: Instant) { self.now = now }
+  }
+  let state = State(now: Instant(continuousNanos: 0, utc: try SourceTime("2026-01-01T00:00:00Z")))
   let schedule = ManualSchedule()
-  var fired: [UInt64] = []
   let alarm = DeadlineAlarm(
-    clock: { now }, schedule: schedule.schedule, fire: { fired.append(now.continuousNanos) })
+    clock: { state.now }, schedule: schedule.schedule,
+    fire: { state.fired.append(state.now.continuousNanos) })
   alarm.arm(500)
   alarm.arm(500)
   #expect(schedule.count == 1)
   alarm.arm(300)
   #expect(schedule.cancelled == 1 && schedule.count == 1 && schedule.delays == [500, 300])
-  now = Instant(continuousNanos: 300, utc: now.utc)
+  state.now = Instant(continuousNanos: 300, utc: state.now.utc)
   schedule.fireNext()
-  #expect(fired == [300])
+  #expect(state.fired == [300])
   // A deadline that stays due after its tick is left to the pulse: no spinning alarm.
   alarm.arm(300)
   #expect(schedule.count == 0)
@@ -144,7 +149,7 @@ private let millisecond: UInt64 = 1_000_000
   alarm.arm(200)
   #expect(schedule.delays.last == 0)
   schedule.fireNext()
-  #expect(fired == [300, 300])
+  #expect(state.fired == [300, 300])
 }
 
 @MainActor @Test func fifoReportsEveryFlushToTheAlarm() throws {

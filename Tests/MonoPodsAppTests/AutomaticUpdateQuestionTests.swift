@@ -69,3 +69,24 @@ func onlyTheFirstClickAnswers(button: Int, answer: AutomaticUpdateAnswer) throws
   click(try #require(buttons.last))
   #expect(record.answers == [.decline])
 }
+
+@MainActor @Test func closingTheWindowDismissesOnceAndReleasesTheQuestion() throws {
+  let record = Record()
+  weak var shown: AutomaticUpdateQuestion?
+  var buttons: [NSButton] = []
+  var window: NSWindow?
+  do {
+    let question = makeQuestion(record)
+    question.show()
+    shown = question
+    buttons = question.alert.buttons
+    window = question.alert.window
+  }
+  #expect(shown != nil)
+  NotificationCenter.default.post(name: NSWindow.willCloseNotification, object: window)
+  #expect(record.answers == [.dismissed])
+  #expect(shown == nil)
+  click(try #require(buttons.first))
+  NotificationCenter.default.post(name: NSWindow.willCloseNotification, object: window)
+  #expect(record.answers == [.dismissed])
+}

@@ -27,10 +27,9 @@ public enum SystemLogEnvelope: Sendable {
     ]
     let signed: Set<String> = ["personaType", "launchPersonaType"]
     let uuids: Set<String> = ["senderImageUUID", "bootUUID", "processImageUUID"]
-    let allowed = required.union(strings).union(numbers).union(signed).union(uuids).union([
-      "source", "backtrace",
-    ])
-    guard required.isSubset(of: Set(fields.keys)), Set(fields.keys).isSubset(of: allowed) else {
+    // Only required fields and known metadata are validated; extra top-level fields added by
+    // other macOS versions are ignored so a newer or older log schema does not stall switching.
+    guard required.isSubset(of: Set(fields.keys)) else {
       throw ContractError.invalid
     }
     for key in required.union(strings).intersection(fields.keys) { _ = try fields[key]!.string() }

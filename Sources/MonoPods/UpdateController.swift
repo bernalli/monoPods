@@ -56,16 +56,25 @@ import Sparkle
     self.coordinator = coordinator
     observations = [
       updater.observe(\.canCheckForUpdates) { [weak self] _, _ in
-        MainActor.assumeIsolated { self?.coordinator?.canCheckChanged() }
+        Self.onMain { self?.coordinator?.canCheckChanged() }
       },
       updater.observe(\.automaticallyChecksForUpdates) { [weak self] _, _ in
-        MainActor.assumeIsolated { self?.coordinator?.settingsChanged() }
+        Self.onMain { self?.coordinator?.settingsChanged() }
       },
       updater.observe(\.automaticallyDownloadsUpdates) { [weak self] _, _ in
-        MainActor.assumeIsolated { self?.coordinator?.settingsChanged() }
+        Self.onMain { self?.coordinator?.settingsChanged() }
       },
     ]
     coordinator.start()
+  }
+
+  /// Runs synchronously when KVO arrives on the main thread, and hops safely if notified off-main.
+  nonisolated private static func onMain(_ work: @escaping @MainActor @Sendable () -> Void) {
+    if Thread.isMainThread {
+      MainActor.assumeIsolated(work)
+    } else {
+      DispatchQueue.main.async { MainActor.assumeIsolated(work) }
+    }
   }
 
   func checkForUpdates() { coordinator?.checkForUpdates() }
